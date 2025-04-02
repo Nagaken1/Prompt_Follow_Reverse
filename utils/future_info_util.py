@@ -197,6 +197,13 @@ def no_active_orders(token: str) -> bool:
 
     Returns:
         bool: 発注中の注文が無ければ True、それ以外は False
+
+    定義値	説明
+    1	待機（発注待機）
+    2	処理中（発注送信中）
+    3	処理済（発注済・訂正済）
+    4	訂正取消送信中
+    5	終了（発注エラー・取消済・全約定・失効・期限切れ）
     """
     try:
         orders = get_orders(token)

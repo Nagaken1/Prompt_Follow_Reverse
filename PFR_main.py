@@ -4,7 +4,7 @@ import time
 from datetime import datetime, time as dtime
 from config.logger import setup_logger
 from config.settings import ENABLE_TICK_OUTPUT
-
+import pandas as pd
 from client.kabu_websocket import KabuWebSocketClient
 from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter

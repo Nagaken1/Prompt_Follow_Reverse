@@ -67,6 +67,15 @@ def main():
                 print("[INFO] 取引終了時刻になったため、自動終了します。")
                 break
 
+            # --- 追加: 毎分0秒に1回 tick を取得 ---
+            if now.second == 0 and now.minute != last_tick_minute:
+                if price_handler.latest_price is not None and price_handler.latest_timestamp is not None:
+                    print(f"[TICK] {now.strftime('%H:%M:%S')} 時点のTick: {price_handler.latest_price} @ {price_handler.latest_timestamp}")
+                else:
+                    print(f"[TICK] {now.strftime('%H:%M:%S')} 時点: 最新Tickなし")
+                price_handler.record_latest_tick()
+                last_tick_minute = now.minute
+
             if now.minute != last_checked_minute and now.second == 1:
                 for attempt in range(5):
                     current_last_line = get_last_line_of_latest_source("csv")

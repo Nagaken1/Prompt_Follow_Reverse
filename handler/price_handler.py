@@ -16,12 +16,27 @@ class PriceHandler:
         self.ohlc_writer = ohlc_writer
         self.tick_writer = tick_writer
         self.last_written_minute = None
-        #self.first_ohlc_skipped = False
+        self.latest_price = None
+        self.latest_timestamp = None
+
+    def record_latest_tick(self):
+        """
+        保持している最新のTickを明示的に再記録する（1分に1回などで使用）
+        """
+        if self.latest_price is not None and self.latest_timestamp is not None:
+            print(f"[INFO] record_latest_tick() 呼び出し: {self.latest_timestamp}, {self.latest_price}")
+            self.handle_tick(self.latest_price, self.latest_timestamp)
+        else:
+            print("[WARN] 最新Tickがまだ存在しません。")
 
     def handle_tick(self, price: float, timestamp: datetime):
 
         # 限月をあらかじめ取得（常に必要なので）
         contract_month = get_active_term(timestamp)
+
+        # 最新Tick情報を保持
+        self.latest_price = price
+        self.latest_timestamp = timestamp
 
         if self.tick_writer is not None:
             self.tick_writer.write_tick(price, timestamp)

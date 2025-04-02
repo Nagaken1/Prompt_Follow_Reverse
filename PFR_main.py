@@ -88,12 +88,13 @@ def main():
 
                     if current_last_line != prev_last_line:
                         print("[INFO] ソースファイルが更新されたため、最新3分を書き出します。")
-                        new_last_line = export_latest_minutes_to_pd(
+                        new_last_line,df = export_latest_minutes_to_pd(
                             base_dir="csv",
                             minutes=3,
                             prev_last_line=prev_last_line
                         )
                         prev_last_line = new_last_line.strip()
+                        print(df)
                         break
                     else:
                         time.sleep(1)  # 最大30回リトライ

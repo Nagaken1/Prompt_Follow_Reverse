@@ -77,8 +77,6 @@ def main():
                 last_tick_minute = now.minute
 
             if now.minute != last_checked_minute:
-                # ダミー補完を実行
-                price_handler.fill_missing_minutes(now)
 
                 for attempt in range(30):
                     current_last_line = get_last_line_of_latest_source("csv")

@@ -1,3 +1,4 @@
+import os
 from config.settings import API_BASE_URL, get_api_password
 import json
 import requests

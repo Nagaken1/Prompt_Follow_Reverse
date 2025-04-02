@@ -131,3 +131,58 @@ def get_future_Trade_Limit(token):
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()
+
+def has_position(side: int, token: str) -> bool:
+    """
+    指定された売買区分（1=買い, 2=売り）で建玉が存在するかどうかを判定する。
+
+    Args:
+        side (int): 売買区分。1=買い、2=売り
+        token (str): kabuステーショントークン
+
+    Returns:
+        bool: 指定区分で建玉がある場合は True、なければ False
+    """
+    try:
+        positions = get_positions(token)
+        for pos in positions:
+            if pos.get("Side") == side and pos.get("LeavesQty", 0) > 0:
+                return True
+        return False
+    except Exception as e:
+        print(f"[ERROR] 建玉判定に失敗: {e}")
+        return False
+
+    # 実行例
+    #if __name__ == "__main__":
+    #token = get_token()
+
+    #if has_position(1, token):
+    #    print("買い建玉あり")
+    #else:
+    #    print("買い建玉なし")
+
+    #if has_position(2, token):
+    #    print("売り建玉あり")
+    #else:
+    #    print("売り建玉なし")
+
+def no_positions(token: str) -> bool:
+    """
+    買い・売りいずれの建玉も保有していない場合に True を返す。
+
+    Args:
+        token (str): kabuステーショントークン
+
+    Returns:
+        bool: 建玉を一切保有していなければ True、それ以外は False
+    """
+    return not has_position(1, token) and not has_position(2, token)
+
+    #if __name__ == "__main__":
+    #    token = get_token()
+
+    #    if no_positions(token):
+    #        print(" 建玉は一切ありません")
+    #    else:
+    #        print(" 建玉があります")

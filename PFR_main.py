@@ -96,7 +96,7 @@ def main():
                     else:
                         time.sleep(1)  # 最大30回リトライ
 
-                last_checked_minute = now.minute  # 次の分まで再実行しない
+            last_checked_minute = now.minute  # 次の分まで再実行しない
         time.sleep(1)
 
     finally:

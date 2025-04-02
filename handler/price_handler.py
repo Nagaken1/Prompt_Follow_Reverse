@@ -106,9 +106,8 @@ class PriceHandler:
             print(f"[DEBUG][fill_missing_minutes] 補完不要: now={now}, current={current_minute}, last_written_minute={self.last_written_minute}")
             return
 
-        print(f"[DEBUG][fill_missing_minutes] 補完開始: from {last_minute + timedelta(minutes=1)} to {current_minute - timedelta(minutes=1)}")
-
         while last_minute + timedelta(minutes=1) <= current_minute:
+            print(f"[DEBUG][fill_missing_minutes] 補完開始: from {last_minute + timedelta(minutes=1)} to {current_minute - timedelta(minutes=1)}")
             next_minute = last_minute + timedelta(minutes=1)
             print(f"[TRACE] next_minute = {next_minute}")
 

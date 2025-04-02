@@ -76,28 +76,31 @@ def main():
                 price_handler.record_latest_tick()
                 last_tick_minute = now.minute
 
-            if now.minute != last_checked_minute and now.second == 1:
+            if now.minute != last_checked_minute:
+                # ダミー補完を実行
+                price_handler.fill_missing_minutes(now)
+
                 for attempt in range(30):
                     current_last_line = get_last_line_of_latest_source("csv")
 
-                    print(f"[DEBUG] 前回の最終行: {repr(prev_last_line)}")
-                    print(f"[DEBUG] 今回の最終行: {repr(current_last_line)}")
+                    #print(f"[DEBUG] 前回の最終行: {repr(prev_last_line)}")
+                    #print(f"[DEBUG] 今回の最終行: {repr(current_last_line)}")
 
                     if current_last_line != prev_last_line:
                         print("[INFO] ソースファイルが更新されたため、最新3分を書き出します。")
-                        new_last_line, latest_df = export_latest_minutes_to_pd(
+                        new_last_line = export_latest_minutes_to_pd(
                             base_dir="csv",
                             minutes=3,
                             prev_last_line=prev_last_line
                         )
-                        print(latest_df)
                         prev_last_line = new_last_line.strip()
                         break
                     else:
                         time.sleep(1)  # 最大30回リトライ
 
             last_checked_minute = now.minute  # 次の分まで再実行しない
-        time.sleep(1)
+
+            time.sleep(1)
 
     finally:
         price_handler.finalize_ohlc()

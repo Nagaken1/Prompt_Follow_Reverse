@@ -87,34 +87,34 @@ class PriceHandler:
     def fill_missing_minutes(self, now: datetime):
         if is_market_closed(now):
             print(f"[DEBUG][fill_missing_minutes] 市場閉場中のため補完スキップ: {now}")
-            return  # 市場休止中は何もしない
+            return
 
         if self.ohlc_builder.current_minute is None or self.ohlc_builder.ohlc is None:
             print(f"[DEBUG][fill_missing_minutes] current_minute 未定義のため補完スキップ")
             return
 
-        last_minute = self.ohlc_builder.current_minute
         current_minute = now.replace(second=0, microsecond=0, tzinfo=None)
+        last_minute = self.ohlc_builder.current_minute
 
         print(f"[DEBUG] fill_missing_minutes() 呼び出し")
         print(f"[DEBUG] last_ohlc.ohlc_time = {last_minute}")
         print(f"[DEBUG] current_minute = {current_minute}")
         print(f"[DEBUG] self.last_written_minute = {self.last_written_minute}")
 
-        if current_minute <= last_minute:#関数が呼ばれた時間＜＝最後に4本値を書き込んだ時間
-            print(f"[DEBUG][fill_missing_minutes] 同分または過去分のため補完スキップ: now={now}, current={current_minute}")
-            return  # 同じ分内なら補完不要
+        # last_written_minute を基準に補完スキップを判断
+        if self.last_written_minute and current_minute <= self.last_written_minute:
+            print(f"[DEBUG][fill_missing_minutes] 補完不要: now={now}, current={current_minute}, last_written_minute={self.last_written_minute}")
+            return
 
         print(f"[DEBUG][fill_missing_minutes] 補完開始: from {last_minute + timedelta(minutes=1)} to {current_minute - timedelta(minutes=1)}")
 
-        while last_minute + timedelta(minutes=1) < current_minute:#最後に4本値を書き込んだ時間+1＜関数が呼ばれた時間の間、繰り返す
+        while last_minute + timedelta(minutes=1) <= current_minute:
             next_minute = last_minute + timedelta(minutes=1)
-
             print(f"[TRACE] next_minute = {next_minute}")
 
             if is_market_closed(next_minute):
                 print(f"[DEBUG][fill_missing_minutes] 補完対象が無音時間のためスキップ: {next_minute}")
-                last_minute = next_minute  # スキップしても時刻は進める
+                last_minute = next_minute
                 continue
 
             last_minute = next_minute
@@ -131,18 +131,17 @@ class PriceHandler:
             }
 
             dummy_time = dummy["time"].replace(second=0, microsecond=0)
-
             print(f"[TRACE] dummy_time = {dummy_time}, last_written_minute = {self.last_written_minute}")
 
             if not self.last_written_minute or dummy_time > self.last_written_minute:
                 print(f"[DEBUG][fill_missing_minutes] ダミー補完: {dummy_time}")
                 self.ohlc_writer.write_row(dummy)
                 self.last_written_minute = dummy_time
-                self.ohlc_builder.current_minute = dummy_time  # A: current_minute を進めて順序を保証
+                self.ohlc_builder.current_minute = dummy_time
                 self.ohlc_builder.ohlc = dummy
             else:
                 print(f"[DEBUG][fill_missing_minutes] 重複のため補完打ち切り: {dummy_time}")
-                break  # A: 順序・重複チェックのため break で終了
+                break
 
 
     def finalize_ohlc(self):

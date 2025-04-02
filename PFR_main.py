@@ -11,7 +11,7 @@ from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session
 from utils.symbol_resolver import get_active_term, get_symbol_code
-from utils.export_util import export_connection_info, export_latest_minutes_from_files
+from utils.export_util import export_connection_info, export_latest_minutes_to_pd
 from utils.future_info_util import get_token, get_last_line_of_latest_source ,register_symbol
 
 def main():
@@ -85,12 +85,12 @@ def main():
 
                     if current_last_line != prev_last_line:
                         print("[INFO] ソースファイルが更新されたため、最新3分を書き出します。")
-                        new_last_line = export_latest_minutes_from_files(
+                        new_last_line, latest_df = export_latest_minutes_to_pd(
                             base_dir="csv",
                             minutes=3,
-                            output_file="latest_ohlc.csv",
                             prev_last_line=prev_last_line
                         )
+                        print(latest_df)
                         prev_last_line = new_last_line.strip()
                         break
                     else:

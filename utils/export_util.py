@@ -17,7 +17,7 @@ def export_connection_info(symbol_code: str, exchange_code: int, token: str, out
     except Exception as e:
         print(f"[ERROR] 接続情報の書き出しに失敗しました: {e}")
 
-def export_latest_minutes_from_files(base_dir: str, minutes: int = 3, output_file: str = "latest_ohlc.csv", prev_last_line: str = "") -> str:
+def export_latest_minutes_to_csv(base_dir: str, minutes: int = 3, output_file: str = "latest_ohlc.csv", prev_last_line: str = "") -> str:
     """
     ディレクトリ内のCSVファイルから、最新2つを読み込み、N分間のデータを抽出して出力。
     変更があった場合に最新の最終行を返す。
@@ -69,3 +69,56 @@ def export_latest_minutes_from_files(base_dir: str, minutes: int = 3, output_fil
     except Exception as e:
         print(f"[エラー] 処理中に例外が発生しました: {e}")
         return prev_last_line
+
+def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line: str = "") ->  tuple[str, pd.DataFrame]:
+    """
+    ディレクトリ内のCSVファイルから、最新2つを読み込み、N分間のデータを抽出して出力。
+    戻り値は (最終行の文字列, 最新N分のDataFrame)。
+    """
+    try:
+        files = [
+            f for f in os.listdir(base_dir)
+            if f.endswith("_nikkei_mini_future.csv") and f[:8].isdigit()
+        ]
+
+        if len(files) < 1:
+            print("[警告] 対象CSVファイルが見つかりませんでした")
+            return prev_last_line, pd.DataFrame()
+
+        files_sorted = sorted(files, reverse=True)
+        target_files = files_sorted[:2]
+
+        combined_df = pd.DataFrame()
+
+        for fname in reversed(target_files):
+            path = os.path.join(base_dir, fname)
+            try:
+                temp_df = pd.read_csv(path)
+                temp_df["Time"] = pd.to_datetime(temp_df["Time"])
+                combined_df = pd.concat([combined_df, temp_df], ignore_index=True)
+            except Exception as e:
+                print(f"[警告] {fname} の読み込みに失敗: {e}")
+
+        if combined_df.empty:
+            print("[警告] ファイル読み込みに失敗しました")
+            return prev_last_line, pd.DataFrame()
+
+        latest_time = combined_df["Time"].max()
+        start_time = latest_time - timedelta(minutes=minutes - 1)
+        latest_df = combined_df[combined_df["Time"] >= start_time].copy()
+        latest_df.sort_values("Time", inplace=True)
+
+        # 日付フォーマットの変換（表示用）
+        latest_df["Time"] = latest_df["Time"].dt.strftime("%Y/%m/%d %H:%M:%S")
+
+        # 最終行の取得
+        if not latest_df.empty:
+            last_row_str = ",".join(map(str, latest_df.iloc[-1].values))
+        else:
+            last_row_str = prev_last_line
+
+        return last_row_str, latest_df
+
+    except Exception as e:
+        print(f"[エラー] 処理中に例外が発生しました: {e}")
+        return prev_last_line, pd.DataFrame()

@@ -179,10 +179,41 @@ def no_positions(token: str) -> bool:
     """
     return not has_position(1, token) and not has_position(2, token)
 
+    # 実行例
     #if __name__ == "__main__":
     #    token = get_token()
 
     #    if no_positions(token):
-    #        print(" 建玉は一切ありません")
+    #        print("建玉は一切ありません")
     #    else:
-    #        print(" 建玉があります")
+    #        print("建玉があります")
+
+def no_active_orders(token: str) -> bool:
+    """
+    発注中の注文が存在しない場合に True を返す。
+
+    Args:
+        token (str): kabuステーショントークン
+
+    Returns:
+        bool: 発注中の注文が無ければ True、それ以外は False
+    """
+    try:
+        orders = get_orders(token)
+        for order in orders:
+            state = order.get("OrderState", "")
+            if state in ["受付済", "一部約定", "執行中"]:
+                return False
+        return True
+    except Exception as e:
+        print(f"[ERROR] 注文状態の確認中にエラー: {e}")
+        return False
+
+    # 実行例
+    #if __name__ == "__main__":
+    #    token = get_token()
+
+    #    if no_active_orders(token):
+    #        print("発注中の注文はありません")
+    #    else:
+    #        print("現在発注中の注文があります")

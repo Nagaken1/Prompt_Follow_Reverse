@@ -101,14 +101,13 @@ class PriceHandler:
         print(f"[DEBUG] current_minute = {current_minute}")
         print(f"[DEBUG] self.last_written_minute = {self.last_written_minute}")
 
-        # 補完処理で「直近の current_minute の1分後」を補完しないように明示的に制限
-        if current_minute <= last_minute:
+        if current_minute <= last_minute:#関数が呼ばれた時間＜＝最後に4本値を書き込んだ時間
             print(f"[DEBUG][fill_missing_minutes] 同分または過去分のため補完スキップ: now={now}, current={current_minute}")
             return  # 同じ分内なら補完不要
 
         print(f"[DEBUG][fill_missing_minutes] 補完開始: from {last_minute + timedelta(minutes=1)} to {current_minute - timedelta(minutes=1)}")
 
-        while last_minute + timedelta(minutes=1) <= current_minute:
+        while last_minute + timedelta(minutes=1) < current_minute:#最後に4本値を書き込んだ時間+1＜関数が呼ばれた時間の間、繰り返す
             next_minute = last_minute + timedelta(minutes=1)
 
             print(f"[TRACE] next_minute = {next_minute}")

@@ -99,7 +99,11 @@ def main():
                     else:
                         time.sleep(1)  # 最大30回リトライ
 
-            last_checked_minute = now.minute  # 次の分まで再実行しない
+                #  補完処理のログ出力（必ず毎分）
+                print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} に fill_missing_minutes を呼び出します。")
+                price_handler.fill_missing_minutes(now)
+
+                last_checked_minute = now.minute  # 次の分まで再実行しない
 
             time.sleep(1)
 

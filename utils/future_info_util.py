@@ -190,7 +190,7 @@ def no_positions(token: str) -> bool:
 
 def no_active_orders(token: str) -> bool:
     """
-    発注中の注文が存在しない場合に True を返す。
+    発注中（Stateが1〜4）の注文が存在しない場合に True を返す。
 
     Args:
         token (str): kabuステーショントークン
@@ -201,8 +201,8 @@ def no_active_orders(token: str) -> bool:
     try:
         orders = get_orders(token)
         for order in orders:
-            state = order.get("OrderState", "")
-            if state in ["受付済", "一部約定", "執行中"]:
+            state = order.get("State")  # または order.get("OrderState")
+            if state in [1, 2, 3, 4]:
                 return False
         return True
     except Exception as e:

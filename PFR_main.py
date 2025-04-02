@@ -77,7 +77,7 @@ def main():
                 last_tick_minute = now.minute
 
             if now.minute != last_checked_minute and now.second == 1:
-                for attempt in range(5):
+                for attempt in range(30):
                     current_last_line = get_last_line_of_latest_source("csv")
 
                     print(f"[DEBUG] 前回の最終行: {repr(prev_last_line)}")
@@ -94,7 +94,7 @@ def main():
                         prev_last_line = new_last_line.strip()
                         break
                     else:
-                        time.sleep(1)  # 最大5回リトライ
+                        time.sleep(1)  # 最大30回リトライ
 
                 last_checked_minute = now.minute  # 次の分まで再実行しない
         time.sleep(1)

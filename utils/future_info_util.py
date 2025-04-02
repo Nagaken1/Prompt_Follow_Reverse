@@ -62,3 +62,72 @@ def register_symbol(symbol_code: str, exchange_code: int, token: str) -> bool:
     except Exception as e:
         print(f"[ERROR] 銘柄登録失敗: {e}")
         return False
+
+def get_positions(token):
+    """保有情報を取得"""
+    url = f"{API_BASE_URL}/positions"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': token
+    }
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+    # 実行例
+    #token = get_token(API_KEY)
+    #positions = get_positions(token)
+
+    #for pos in positions:
+    #    print({
+    #        "約定番号": pos['ExecutionID'],
+    #        "銘柄コード": pos['Symbol'],
+    #        "残数量（保有数量）": pos['LeavesQty'],
+    #        "拘束数量": pos['HoldQty'],
+    #        "売買区分": pos['Side'],
+    #        "評価損益額": pos['ProfitLoss']
+    #        "手数料": pos['Commission'],
+    #        "手数料消費税": pos['CommissionTax'],
+    #        "銘柄種別": pos['SecurityType']
+    #    })
+
+def get_orders(token):
+    """注文情報を取得"""
+    url = f"{API_BASE_URL}/orders"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': token
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception("注文取得失敗:", response.text)
+
+    # 実行例
+    #orders = get_orders(token)
+    #for order in orders:
+    #   print({
+    #       "注文番号": order["Id"],
+    #       "状態": order["State"],  # 状態: 受付済, 一部約定など
+    #       "執行条件": order["OrdType"],
+    #       "銘柄コード": order["Symbol"],
+    #       "発注数量": order["OrderQty"],
+    #       "約定数量": order["CumQty"],
+    #       "売買区分": order["Side"],  # 1=買い, 2=売り
+    #       "取引区分": order["CashMargin"],
+    #   })
+    #   details = order.get("Details", [])
+    #   for i, detail in enumerate(details):
+    #       rec_type = detail.get("RecType")
+    #       print(f"  - 明細{i+1}: RecType = {rec_type}")
+
+def get_future_Trade_Limit(token):
+    """先物の取引余力を取得"""
+    url = f"{API_BASE_URL}/wallet/future"
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-KEY': token
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()

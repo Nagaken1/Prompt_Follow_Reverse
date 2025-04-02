@@ -17,8 +17,6 @@ class TickWriter:
         self.file = None
         self.writer = None
 
-        self.first_file_path = "latest_first_tick.csv"  # ← PyMin直下に固定
-
         if self.enable_output:
             date_str = self.current_date.strftime("%Y%m%d")
             tick_dir = "csv"
@@ -32,21 +30,10 @@ class TickWriter:
             if self.file.tell() == 0:
                 self.writer.writerow(["Time", "Price"])
 
-        #  first_tick 出力ファイルは常に最新1行を保持（固定名ファイル）
-        self.first_file_path =  "latest_first_tick.csv"
-        os.makedirs("csv", exist_ok=True)
-        self.last_written_minute = None  # 1分ごとの重複記録防止用
-
-        # 初回オープンでヘッダーが必要なら書く（tell()で確認）
-        self.first_file = open(self.first_file_path, "a", newline="", encoding="utf-8")
-        self.first_writer = csv.writer(self.first_file)
-        if self.first_file.tell() == 0:
-            self.first_writer.writerow(["Time", "Price"])
 
     def write_tick(self, price, timestamp: datetime):
         """
         TickデータをCSVファイルに追記する。日付が変わった場合は新しいファイルに切り替える。
-        また、first_tickは常に最新1件を上書きで保存する。
         """
 
         # 日付が変わったら通常ファイルのみ切り替える
@@ -66,15 +53,6 @@ class TickWriter:
 
         # 書き込む内容を準備
         row = [timestamp.strftime("%Y/%m/%d %H:%M:%S"), price]
-
-        #  first_tick は常に最新1件を上書き（1分ごとに1回だけ）
-        tick_minute = timestamp.replace(second=0, microsecond=0)
-        if self.last_written_minute != tick_minute:
-            with open(self.first_file_path, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow(["Time", "Price"])
-                writer.writerow(row)
-            self.last_written_minute = tick_minute
 
         # 通常のTick出力（有効時のみ）
         if self.enable_output and self.writer:

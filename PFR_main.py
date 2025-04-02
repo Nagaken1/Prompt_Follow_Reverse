@@ -17,7 +17,7 @@ from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session
-from symbol_resolver import get_active_term, get_symbol_code
+from utils.symbol_resolver import get_active_term, get_symbol_code
 
 def get_last_line(file_path: str) -> str:
     """

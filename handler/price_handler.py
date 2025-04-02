@@ -1,10 +1,10 @@
 
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
-from ohlc_builder import OHLCBuilder
+from writer.ohlc_builder import OHLCBuilder
 from utils.time_util import is_closing_end, is_market_closed
 from datetime import datetime, timedelta, time as dtime
-from symbol_resolver import get_active_term
+from utils.symbol_resolver import get_active_term
 
 class PriceHandler:
     """

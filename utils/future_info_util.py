@@ -81,6 +81,7 @@ def get_positions(token):
     #    print({
     #        "約定番号": pos['ExecutionID'],
     #        "銘柄コード": pos['Symbol'],
+    #        "値段（約定価格）": pos['Price'],
     #        "残数量（保有数量）": pos['LeavesQty'],
     #        "拘束数量": pos['HoldQty'],
     #        "売買区分": pos['Side'],

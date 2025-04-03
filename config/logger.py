@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 import atexit
 import pandas as pd
+from utils.time_util import get_trade_date
 
 class DualLogger:
     """
@@ -55,7 +56,7 @@ def setup_logger():
 
     atexit.register(sys.stdout.flush) # 終了時に flush を確実におこなう
 
-def log_timeline_data(date_str: str, **data):
+def log_timeline_data(**data):
     """
     指定された日付のTimeLineログCSVに、1行の時系列データを追記する関数。
 
@@ -66,7 +67,6 @@ def log_timeline_data(date_str: str, **data):
     - 渡されなかったカラムは "False" で自動補完される。
 
     引数:
-    - date_str (str): 対象となる取引日（形式: 'YYYYMMDD'）
     - **data: 任意のカラム名とその値をキーワード引数で指定。
              使用可能なカラムは以下のとおり:
 
@@ -84,6 +84,7 @@ def log_timeline_data(date_str: str, **data):
 
     log_dir = "log"
     os.makedirs(log_dir, exist_ok=True)
+    date_str = get_trade_date(datetime.now())
     file_path = os.path.join(log_dir, f"{date_str}_TimeLineLog.csv")
 
     headers = ['First_Tick', 'Open', 'High', 'Low', 'Close',

@@ -70,7 +70,7 @@ def log_timeline_data(**data):
     - **data: 任意のカラム名とその値をキーワード引数で指定。
              使用可能なカラムは以下のとおり:
 
-        ['First_Tick', 'Open', 'High', 'Low', 'Close',
+        ['First_Tick','Time', 'Open', 'High', 'Low', 'Close',
          'シグナル', 'ポジション', '狙い建値', '実際の建値']
 
     使用例:
@@ -87,7 +87,7 @@ def log_timeline_data(**data):
     date_str = get_trade_date(datetime.now())
     file_path = os.path.join(log_dir, f"{date_str}_TimeLineLog.csv")
 
-    headers = ['First_Tick', 'Open', 'High', 'Low', 'Close','Signal', 'Position', '狙い建値', '実際の建値']
+    headers = ['First_Tick','Time', 'Open', 'High', 'Low', 'Close', 'Dummy', 'ContractMonth', 'Signal', 'Position', '狙い建値', '実際の建値']
 
     timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
@@ -108,3 +108,24 @@ def log_timeline_data(**data):
         df.to_csv(file_path, encoding='utf-8-sig')
     else:
         df.to_csv(file_path, mode='a', header=False, encoding='utf-8-sig')
+
+def log_timeline_data_from_pd(df: pd.DataFrame):
+    """
+    OHLCデータを含むDataFrameを1行ずつ log_timeline_data() に渡して
+    'log/YYYYMMDD_TimeLineLog.csv' に記録する関数。
+
+    想定されるカラム: 'Time', 'Open', 'High', 'Low', 'Close'
+
+    他のカラム（例：シグナル、ポジション等）を追加する場合は
+    log_timeline_data() の呼び出し部分で編集可能。
+    """
+    for _, row in df.iterrows():
+        log_timeline_data(
+            Time=row["Time"],
+            Open=row["Open"],
+            High=row["High"],
+            Low=row["Low"],
+            Close=row["Close"],
+            Dummy=row["Dummy"],
+            ContractMonth=row["ContractMonth"]
+        )

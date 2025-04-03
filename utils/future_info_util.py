@@ -2,6 +2,7 @@ import os
 from config.settings import API_BASE_URL, get_api_password
 import json
 import requests
+import pandas as pd
 
 def get_token() -> str:
     """APIトークンを取得する"""
@@ -121,6 +122,52 @@ def get_orders(token):
     #   for i, detail in enumerate(details):
     #       rec_type = detail.get("RecType")
     #       print(f"  - 明細{i+1}: RecType = {rec_type}")
+
+def json_to_dataframe(json_list):
+    """
+    ネストされたJSONリストを展開し、pandas DataFrame に変換するシンプルで可読性の高い関数。
+
+    - 親レベルのキーをすべて列として使用
+    - 最初に見つかったネストされたリスト（例：Details）を展開
+    - 明細がない場合は親だけで1行記録
+    """
+    records = []
+
+    for item in json_list:
+        # 親のデータ（list以外のキー）
+        base_row = {}
+        for key, value in item.items():
+            if not isinstance(value, list):
+                base_row[key] = value
+
+        # ネストされたリスト（明細）を探す
+        nested_key = None
+        for key, value in item.items():
+            if isinstance(value, list):
+                nested_key = key
+                break
+
+        # 明細がある場合は展開
+        if nested_key:
+            nested_list = item[nested_key]
+            for detail in nested_list:
+                if isinstance(detail, dict):
+                    row = base_row.copy()
+                    for d_key, d_value in detail.items():
+                        row[d_key] = d_value
+                    records.append(row)
+                else:
+                    # 明細が辞書でない場合（例：整数のリストなど）
+                    row = base_row.copy()
+                    row[nested_key] = detail
+                    records.append(row)
+        else:
+            # 明細がない場合は親だけで記録
+            records.append(base_row)
+
+    # pandasのDataFrameに変換
+    df = pd.DataFrame(records)
+    return df
 
 def get_future_Trade_Limit(token):
     """先物の取引余力を取得"""

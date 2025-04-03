@@ -87,13 +87,20 @@ def log_timeline_data(**data):
     date_str = get_trade_date(datetime.now())
     file_path = os.path.join(log_dir, f"{date_str}_TimeLineLog.csv")
 
-    headers = ['First_Tick', 'Open', 'High', 'Low', 'Close',
-            'シグナル', 'ポジション', '狙い建値', '実際の建値']
+    headers = ['First_Tick', 'Open', 'High', 'Low', 'Close','Signal', 'Position', '狙い建値', '実際の建値']
 
     timestamp = datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
-    # 未指定の項目は "False" で埋める
-    row = {key: data.get(key, "False") for key in headers}
+    # 初期化された空の辞書
+    row = {}
+
+    # 各カラム（header）ごとに値を取り出す
+    for key in headers:
+        if key in data:
+            row[key] = data[key]  # 渡された値を使う
+        else:
+            row[key] = "False"    # 未指定なら "False" をセット
+
     df = pd.DataFrame([row], columns=headers, index=[timestamp])
     df.index.name = "Timestamp"
 

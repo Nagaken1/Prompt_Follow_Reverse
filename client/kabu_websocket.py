@@ -41,25 +41,24 @@ class KabuWebSocketClient:
     def on_open(self, ws):
         print("[INFO] WebSocket 接続成功")
 
+    def run(self):
+        while self.running:
+            try:
+                self.ws = websocket.WebSocketApp(
+                    "ws://localhost:18080/kabusapi/websocket",
+                    on_message=self.on_message,
+                    on_error=self.on_error,
+                    on_close=self.on_close,
+                    on_open=self.on_open
+                )
+                self.ws.run_forever()
+            except Exception as e:
+                print(f"[ERROR] 再接続エラー: {e}")
+                time.sleep(5)
+
     def start(self):
         self.running = True
-
-        def run():
-            while self.running:
-                try:
-                    self.ws = websocket.WebSocketApp(
-                        "ws://localhost:18080/kabusapi/websocket",
-                        on_message=self.on_message,
-                        on_error=self.on_error,
-                        on_close=self.on_close,
-                        on_open=self.on_open
-                    )
-                    self.ws.run_forever()
-                except Exception as e:
-                    print(f"[ERROR] 再接続エラー: {e}")
-                    time.sleep(5)
-
-        self.thread = threading.Thread(target=run)
+        self.thread = threading.Thread(target=self.run)
         self.thread.daemon = True
         self.thread.start()
 

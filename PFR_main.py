@@ -62,11 +62,6 @@ def main():
     trade_date = get_trade_date(datetime.now())
     END_TIME = datetime.combine(trade_date, dtime(6, 5)) if is_night_session(now) else None
 
-    if END_TIME and datetime.now().replace(tzinfo=None) >= END_TIME:
-        print("[INFO] すでに取引終了時刻を過ぎているため、起動せず終了します。")
-        return
-
-
     ws_client.start()
 
     last_checked_minute = -1

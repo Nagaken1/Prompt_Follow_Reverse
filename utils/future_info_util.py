@@ -19,29 +19,29 @@ def get_token() -> str:
         return None
 
 
-def get_last_line_of_latest_source(base_dir: str) -> str:
-    """
-    base_dir 内で最も新しい _nikkei_mini_future.csv の最終行を取得する。
-    余計な改行・空白を除去して比較できるようにする。
-    """
-    try:
-        files = [
-            f for f in os.listdir(base_dir)
-            if f.endswith("_nikkei_mini_future.csv") and f[:8].isdigit()
-        ]
-        if not files:
-            return ""
+#def get_last_line_of_latest_source(base_dir: str) -> str:
+#    """
+#    base_dir 内で最も新しい _nikkei_mini_future.csv の最終行を取得する。
+#    余計な改行・空白を除去して比較できるようにする。
+#    """
+#    try:
+#        files = [
+#            f for f in os.listdir(base_dir)
+#            if f.endswith("_nikkei_mini_future.csv") and f[:8].isdigit()
+#        ]
+#        if not files:
+#            return ""
 
         # 日付順にソートして最新ファイルを取得
-        latest_file = sorted(files, reverse=True)[0]
-        latest_path = os.path.join(base_dir, latest_file)
+ #       latest_file = sorted(files, reverse=True)[0]
+#       latest_path = os.path.join(base_dir, latest_file)
 
-        with open(latest_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            return lines[-1].strip() if lines else ""
-    except Exception as e:
-        print(f"[ERROR] ソースファイルの最終行取得に失敗: {e}")
-        return ""
+#        with open(latest_path, "r", encoding="utf-8") as f:
+#            lines = f.readlines()
+#            return lines[-1].strip() if lines else ""
+#    except Exception as e:
+#        print(f"[ERROR] ソースファイルの最終行取得に失敗: {e}")
+#        return ""
 
 
 

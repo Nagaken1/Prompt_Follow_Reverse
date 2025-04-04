@@ -1,15 +1,11 @@
 import os
 import sys
 import time
-import json
-import requests
 from datetime import datetime, time as dtime
 from datetime import timedelta
 import pandas as pd
-import csv
 
 from config.logger import setup_logger
-from config.settings import API_BASE_URL, get_api_password
 from config.settings import ENABLE_TICK_OUTPUT, DUMMY_TICK_TEST_MODE,DUMMY_URL
 from client.kabu_websocket import KabuWebSocketClient
 from handler.price_handler import PriceHandler
@@ -18,7 +14,7 @@ from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
-from utils.future_info_util import get_token, get_last_line_of_latest_source ,register_symbol
+from utils.future_info_util import get_token ,register_symbol
 from client.dummy_websocket_client import DummyWebSocketClient
 
 

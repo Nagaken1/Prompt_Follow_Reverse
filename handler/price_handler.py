@@ -2,10 +2,10 @@
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from writer.ohlc_builder import OHLCBuilder
-from utils.time_util import is_closing_end, is_market_closed,is_closing_minute
+from utils.time_util import is_closing_end, is_market_closed
 from datetime import datetime, timedelta, time as dtime
 from utils.symbol_resolver import get_active_term
-from utils.export_util import export_connection_info, export_latest_minutes_to_pd
+from utils.export_util import export_latest_minutes_to_pd
 import pandas as pd
 from typing import Optional
 
@@ -165,45 +165,6 @@ class PriceHandler:
             else:
                 print(f"[DEBUG][fill_missing_minutes] 重複のため補完打ち切り: {dummy_time}")
                 break
-
-    def fill_pre_closing_minutes(self, timestamp: datetime):
-        """
-        プレクロージング時間帯（15:40〜15:44 または 5:55〜5:59）に、
-        ダミーOHLCを5分分まとめて補完する。
-        引数timestampは15:40または5:55のtick timestamp。
-        """
-        base_minute = timestamp.replace(second=0, microsecond=0)
-
-        # すでに補完済みならスキップ（2回以上呼ばれないようにする）
-        if self.last_written_minute and self.last_written_minute >= base_minute + timedelta(minutes=4):
-            print(f"[SKIP] プレクロージング補完はすでに完了済み: {self.last_written_minute}")
-            return
-
-        if not is_closing_minute(base_minute):
-            print(f"[SKIP] クロージングの時間ではないため補完しません: {base_minute}")
-            return
-
-        last_close = self.ohlc_builder.ohlc["close"] if self.ohlc_builder.ohlc else 0
-
-        minute = base_minute + timedelta(minutes=1)
-        dummy = {
-            "time": minute,
-            "open": last_close,
-            "high": last_close,
-            "low": last_close,
-            "close": last_close,
-            "is_dummy": True,
-            "contract_month": "dummy"
-        }
-
-        if not self.last_written_minute or minute > self.last_written_minute:
-            print(f"[PRE-CLOSING] ダミー補完: {minute}")
-            self.ohlc_writer.write_row(dummy)
-            self.last_written_minute = minute
-            self.ohlc_builder.current_minute = minute
-            self.ohlc_builder.ohlc = dummy
-        else:
-            print(f"[SKIP] 重複のため補完スキップ: {minute}")
 
     def finalize_ohlc(self):
         final = self.ohlc_builder._finalize_ohlc()

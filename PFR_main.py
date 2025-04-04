@@ -101,7 +101,9 @@ def main():
                     if new_last_line != prev_last_line and df is not None and not df.empty:
                         prev_last_line = new_last_line.strip()
                         print("[INFO] handle_tick により最新3分が更新されました:")
+                        print("[INFO] 最新3分のDataFrame ↓↓↓")
                         print(df)
+                        print("[INFO] ↑↑↑ DataFrameここまで")
                         print("-" * 50)
                     else:
                         print("[DEBUG] dfはNoneまたは空でした")
@@ -124,7 +126,9 @@ def main():
                     if new_last_line != prev_last_line and df is not None and not df.empty:
                         prev_last_line = new_last_line.strip()
                         print("[INFO] handle_tick により最新3分が更新されました:")
+                        print("[INFO] 最新3分のDataFrame ↓↓↓")
                         print(df)
+                        print("[INFO] ↑↑↑ DataFrameここまで")
                         print("-" * 50)
                     else:
                         print("[DEBUG] dfはNoneまたは空でした")

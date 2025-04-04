@@ -63,7 +63,7 @@ async def tick_sender(websocket, path):
                 "Symbol": "165120019",
                 "Price": float(row["Price"]),
                 "Volume": 1,
-                "Time": str(row["Time"])
+                "Time": pd.to_datetime(row["Time"]).strftime("%Y-%m-%d %H:%M:%S")
             }
 
             await websocket.send(json.dumps(tick))

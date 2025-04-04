@@ -70,7 +70,7 @@ def export_latest_minutes_to_csv(base_dir: str, minutes: int = 3, output_file: s
         print(f"[エラー] 処理中に例外が発生しました: {e}")
         return prev_last_line
 
-def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line: str = "") ->  tuple[str, pd.DataFrame]:
+def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line: str = "") -> tuple[str, pd.DataFrame]:
     """
     ディレクトリ内のCSVファイルから、最新2つを読み込み、N分間のデータを抽出して出力。
     戻り値は (最終行の文字列, 最新N分のDataFrame)。
@@ -111,7 +111,7 @@ def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line:
         # 日付フォーマットの変換（表示用）
         latest_df["Time"] = latest_df["Time"].dt.strftime("%Y/%m/%d %H:%M:%S")
 
-        # 最終行の取得
+        # 最終行の取得（今回は必ず df を返す）
         if not latest_df.empty:
             last_row_str = ",".join(map(str, latest_df.iloc[-1].values))
         else:

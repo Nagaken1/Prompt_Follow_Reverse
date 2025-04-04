@@ -2,7 +2,5 @@
     "API_PASSWORD": "honban1985",
     "API_BASE_URL": "http://localhost:18080/kabusapi",
     "FUTURE_CODE": "NK225mini",
-    "ENABLE_TICK_OUTPUT": true,
-    "DUMMY_URL": "ws://localhost:9000",
-    "DUMMY_TICK_TEST_MODE": true
+    "ENABLE_TICK_OUTPUT": true
 }

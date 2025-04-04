@@ -2,7 +2,6 @@ import os
 import csv
 from datetime import datetime
 
-
 class TickWriter:
     """
     受信したすべてのティックデータ（価格・時刻）をCSVファイルに記録するクラス。
@@ -12,6 +11,7 @@ class TickWriter:
     def __init__(self, enable_output=True):
         self.enable_output = enable_output
         self.current_date = datetime.now().date()
+        self.first_file = None
 
         # Tick 出力ファイルの初期化
         self.file = None

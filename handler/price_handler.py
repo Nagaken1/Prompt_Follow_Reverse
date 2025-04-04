@@ -2,9 +2,12 @@
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from writer.ohlc_builder import OHLCBuilder
-from utils.time_util import is_closing_end, is_market_closed
+from utils.time_util import is_closing_end, is_market_closed,is_closing_minute
 from datetime import datetime, timedelta, time as dtime
 from utils.symbol_resolver import get_active_term
+from utils.export_util import export_connection_info, export_latest_minutes_to_pd
+import pandas as pd
+from typing import Optional
 
 class PriceHandler:
     """
@@ -12,6 +15,7 @@ class PriceHandler:
     ファイルへの出力を管理するクラス。
     """
     def __init__(self, ohlc_writer: OHLCWriter, tick_writer: TickWriter):
+
         self.ohlc_builder = OHLCBuilder()
         self.ohlc_writer = ohlc_writer
         self.tick_writer = tick_writer
@@ -19,28 +23,17 @@ class PriceHandler:
         self.latest_price = None
         self.latest_timestamp = None
 
-    def record_latest_tick(self):
-        """
-        保持している最新のTickを明示的に再記録する（1分に1回などで使用）
-        """
-        if self.latest_price is not None and self.latest_timestamp is not None:
-            print(f"[INFO] record_latest_tick() 呼び出し: {self.latest_timestamp}, {self.latest_price}")
-            self.handle_tick(self.latest_price, self.latest_timestamp)
-        else:
-            print("[WARN] 最新Tickがまだ存在しません。")
 
-    def handle_tick(self, price: float, timestamp: datetime):
-
-        # 限月をあらかじめ取得（常に必要なので）
-        contract_month = get_active_term(timestamp)
-
-        # 最新Tick情報を保持
+    def handle_tick(self, price: float, timestamp: datetime) -> Optional[pd.DataFrame]:
         self.latest_price = price
         self.latest_timestamp = timestamp
+
+        contract_month = get_active_term(timestamp)
 
         if self.tick_writer is not None:
             self.tick_writer.write_tick(price, timestamp)
 
+        # 次セッションの最初の価格を記録（ダミー補完に使用）
         if (
             self.ohlc_builder.first_price_of_next_session is None
             and not is_closing_end(timestamp)
@@ -48,41 +41,72 @@ class PriceHandler:
         ):
             self.ohlc_builder.first_price_of_next_session = price
 
-        ohlc = self.ohlc_builder.update(price, timestamp, contract_month=contract_month)
-        if ohlc:
+        df = None  # ✅ 最後に返すdf
+
+        # ===== update() を繰り返し呼んで OHLC を返すまで処理 =====
+        while True:
+            ohlc = self.ohlc_builder.update(price, timestamp, contract_month=contract_month)
+            if not ohlc:
+                break  # 返ってこなければループ終了
+
             ohlc_time = ohlc["time"].replace(second=0, microsecond=0)
-            #print(f"[DEBUG] ohlc_time to write = {ohlc['time']}")
-
-            #  出力対象は「現在のティックより1分以上前のOHLCのみ」
             current_tick_minute = timestamp.replace(second=0, microsecond=0, tzinfo=None)
-            if ohlc_time >= current_tick_minute:
-                # 未来または現在分 → まだ未確定なので書き込まない
-                return
 
-            ohlc["is_dummy"] = False  # 明示的に dummy でないことを付与
-            ohlc["contract_month"] = contract_month
+            # 同一分または未来分（未確定） → 通常はスキップ
+            if ohlc_time >= current_tick_minute and not ohlc["is_dummy"]:
+                print(f"[SKIP] {ohlc_time} は現在分または未来分 → 未確定でスキップ")
+                break
 
-            # ログで追跡（デバッグ）
-            print(f"[DEBUG] 完成した OHLC: {ohlc_time}, 値: {ohlc}")
-            print(f"[DEBUG] 最後に書いた分: {self.last_written_minute}")
+            # ダミーの重複を防ぐ（同一分で複数回出さない）
+            if self.last_written_minute and ohlc["is_dummy"] and ohlc_time == self.last_written_minute:
+                print(f"[SKIP] 同一のダミーは出力済みのためスキップ: {ohlc_time}")
+                break
 
-            #  重複防止：直前と同じ分は絶対書き込まない（イコールだけブロック、未来はOK）
-            if self.last_written_minute and ohlc_time == self.last_written_minute:
+            # 通常の重複チェック
+            if self.last_written_minute and ohlc_time <= self.last_written_minute:
                 print(f"[SKIP] 重複のため {ohlc_time} をスキップ")
-                return
+                break
 
-            if not self.last_written_minute or ohlc_time > self.last_written_minute:
-                self.ohlc_writer.write_row(ohlc)
-                self.last_written_minute = ohlc_time
-                self.ohlc_builder.current_minute = ohlc_time  # B: 整合性を保つために current_minute を更新
+            # 書き込み処理
+            self.ohlc_writer.write_row(ohlc)
+            self.last_written_minute = ohlc_time
+            self.ohlc_builder.current_minute = ohlc_time
+            print(f"[WRITE] OHLC確定: {ohlc_time} 値: {ohlc}")
 
-#        dummy_ohlc = self.ohlc_builder.finalize_with_next_session_price(timestamp)
-#        if dummy_ohlc:
-#            dummy_time = dummy_ohlc["time"].replace(second=0, microsecond=0)
-#            if not self.last_written_minute or dummy_time > self.last_written_minute:
-#                self.ohlc_writer.write_row(dummy_ohlc)
-#                self.last_written_minute = dummy_time
-#                self.ohlc_builder.current_minute = dummy_time
+            # ✅ OHLC確定ごとにdfを取得
+            new_last_line, latest_df = export_latest_minutes_to_pd(
+                base_dir="csv",
+                minutes=3,
+                prev_last_line=getattr(self, "prev_last_line", "")
+            )
+            self.prev_last_line = new_last_line.strip()
+            df = latest_df  # ✅ 最後に返す用に保存
+            #print("[DEBUG][handle_tick] latest_df:\n", latest_df)
+
+        # ===== クロージングtick用の強制確定処理（15:45 or 6:00）=====
+        if (timestamp.hour == 15 and timestamp.minute == 45) or (timestamp.hour == 6 and timestamp.minute == 0):
+            print(f"[INFO][handle_tick] クロージングtickをhandle_tickに送ります: {price} @ {timestamp}")
+
+            final_ohlc = self.ohlc_builder.force_finalize()
+            if final_ohlc:
+                final_time = final_ohlc["time"].replace(second=0, microsecond=0)
+                if not self.last_written_minute or final_time > self.last_written_minute:
+                    self.ohlc_writer.write_row(final_ohlc)
+                    self.last_written_minute = final_time
+                    print(f"[INFO][handle_tick] クロージングOHLCを強制出力: {final_time}")
+                    # ✅ クロージングも出力
+                    new_last_line, latest_df = export_latest_minutes_to_pd(
+                        base_dir="csv",
+                        minutes=3,
+                        prev_last_line=getattr(self, "prev_last_line", "")
+                    )
+                    self.prev_last_line = new_last_line.strip()
+                    df = latest_df
+                    #print(df)
+                else:
+                    print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
+
+        return df  # ✅ mainなどから受け取れるように返す
 
     def fill_missing_minutes(self, now: datetime):
         if is_market_closed(now):
@@ -102,7 +126,7 @@ class PriceHandler:
         print(f"[DEBUG] self.last_written_minute = {self.last_written_minute}")
 
         # last_written_minute を基準に補完スキップを判断
-        if self.last_written_minute and current_minute <= self.last_written_minute:
+        if current_minute <= last_minute:
             print(f"[DEBUG][fill_missing_minutes] 補完不要: now={now}, current={current_minute}, last_written_minute={self.last_written_minute}")
             return
 
@@ -142,6 +166,44 @@ class PriceHandler:
                 print(f"[DEBUG][fill_missing_minutes] 重複のため補完打ち切り: {dummy_time}")
                 break
 
+    def fill_pre_closing_minutes(self, timestamp: datetime):
+        """
+        プレクロージング時間帯（15:40〜15:44 または 5:55〜5:59）に、
+        ダミーOHLCを5分分まとめて補完する。
+        引数timestampは15:40または5:55のtick timestamp。
+        """
+        base_minute = timestamp.replace(second=0, microsecond=0)
+
+        # すでに補完済みならスキップ（2回以上呼ばれないようにする）
+        if self.last_written_minute and self.last_written_minute >= base_minute + timedelta(minutes=4):
+            print(f"[SKIP] プレクロージング補完はすでに完了済み: {self.last_written_minute}")
+            return
+
+        if not is_closing_minute(base_minute):
+            print(f"[SKIP] クロージングの時間ではないため補完しません: {base_minute}")
+            return
+
+        last_close = self.ohlc_builder.ohlc["close"] if self.ohlc_builder.ohlc else 0
+
+        minute = base_minute + timedelta(minutes=1)
+        dummy = {
+            "time": minute,
+            "open": last_close,
+            "high": last_close,
+            "low": last_close,
+            "close": last_close,
+            "is_dummy": True,
+            "contract_month": "dummy"
+        }
+
+        if not self.last_written_minute or minute > self.last_written_minute:
+            print(f"[PRE-CLOSING] ダミー補完: {minute}")
+            self.ohlc_writer.write_row(dummy)
+            self.last_written_minute = minute
+            self.ohlc_builder.current_minute = minute
+            self.ohlc_builder.ohlc = dummy
+        else:
+            print(f"[SKIP] 重複のため補完スキップ: {minute}")
 
     def finalize_ohlc(self):
         final = self.ohlc_builder._finalize_ohlc()

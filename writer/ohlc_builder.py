@@ -105,32 +105,6 @@ class OHLCBuilder:
             return None
         return self.ohlc.copy()
 
-    def finalize_with_next_session_price(self, now: datetime) -> dict:
-        """
-        セッション終了後、次セッションの最初の価格でダミーOHLCを生成。
-        同一セッションでの多重補完を防ぐ。
-        """
-        session_id = self._get_session_id(now)
-
-        if self.first_price_of_next_session is None or self.closing_completed_session == session_id:
-            return None
-
-        minute = now.replace(second=0, microsecond=0, tzinfo=None)
-
-        dummy = {
-            "time": minute,
-            "open": self.first_price_of_next_session,
-            "high": self.first_price_of_next_session,
-            "low": self.first_price_of_next_session,
-            "close": self.first_price_of_next_session,
-            "is_dummy": True,
-            "contract_month": "dummy"
-        }
-
-        self.first_price_of_next_session = None
-        self.closing_completed_session = session_id  # ← セッション単位でフラグON
-        return dummy
-
     def _get_session_id(self, dt: datetime) -> str:
         """
         日中・夜間セッションごとのIDを返す。

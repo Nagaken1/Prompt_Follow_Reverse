@@ -66,3 +66,11 @@ def is_opening_minute(minute: dtime) -> bool:
     # t = minute.time() ← これは不要
     t = minute  # そのまま使えばOK
     return t == dtime(8, 45) or t == dtime(17, 0)
+
+def is_pre_closing_minute(minute: dtime) -> bool:
+    """
+    プレクロージング時間（15:40 または 5:55）かを判定
+    """
+    # t = minute.time() ← これは不要
+    t = minute  # そのまま使えばOK
+    return t == dtime(15, 40) or t == dtime(5, 55)

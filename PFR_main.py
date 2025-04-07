@@ -74,8 +74,12 @@ def main():
             status = price_handler.get_current_price_status()
 
             if timestamp is None:
+                # ✅ tickが来ていない状態でも、statusだけはログする
+                if status == 12:
+                    now = datetime.now().replace(second=0, microsecond=0)
+                    print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} サーキットブレイク実施中（tick未到達）")
                 time.sleep(0.1)
-                continue  # Tickが来るまで待機
+                continue
 
             now = timestamp.replace(second=0, microsecond=0)
 
@@ -93,9 +97,6 @@ def main():
             # ✅ ザラバ中：足の補完処理のみ（出力はhandle_tick任せ）
             if not is_closing_minute(now.time()):
                 if now.minute != last_checked_minute:
-
-                    if status == 12:
-                        print("サーキットブレイク実施中")
 
                     print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} に fill_missing_minutes を呼び出します。")
                     price_handler.fill_missing_minutes(now)

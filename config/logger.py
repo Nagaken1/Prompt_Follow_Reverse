@@ -48,7 +48,7 @@ def setup_logger():
     log_dir = "log"
     os.makedirs(log_dir, exist_ok=True)
 
-    log_filename = datetime.now().strftime("%Y%m%d") + "_PyMin_log.txt"
+    log_filename = datetime.now().strftime("%Y%m%d") + "PFR_log.txt"
     log_path = os.path.join(log_dir, log_filename)
 
     sys.stdout = DualLogger(log_path)

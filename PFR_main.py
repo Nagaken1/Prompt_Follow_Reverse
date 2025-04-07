@@ -14,7 +14,7 @@ from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
-from utils.future_info_util import get_token ,register_symbol,get_cb_info
+from utils.future_info_util import get_token ,register_symbol
 from client.dummy_websocket_client import DummyWebSocketClient
 
 

@@ -5,10 +5,11 @@ from writer.ohlc_builder import OHLCBuilder
 from utils.time_util import is_closing_end, is_market_closed
 from datetime import datetime, timedelta, time as dtime
 from utils.symbol_resolver import get_active_term
-from utils.export_util import export_latest_minutes_to_pd
+from utils.export_util import export_latest_minutes_to_pd, get_last_ohlc_time_from_csv
 import pandas as pd
 from typing import Optional
 from utils.future_info_util import get_previous_close_price  # 事前に作るユーティリティ想定
+
 
 class PriceHandler:
     """
@@ -24,6 +25,7 @@ class PriceHandler:
         self.latest_price = None
         self.latest_timestamp = None
         self.latest_price_status = None
+        self.last_written_minute = get_last_ohlc_time_from_csv("csv")
 
     def get_latest_price(self) -> Optional[float]:
         """最新の価格を返す"""

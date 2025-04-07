@@ -3,6 +3,8 @@ import os
 import csv
 from datetime import timedelta
 import pandas as pd
+from typing import Optional
+from datetime import datetime
 
 def export_connection_info(symbol_code: str, exchange_code: int, token: str, output_file: str = "connection_info.csv"):
     """
@@ -122,3 +124,15 @@ def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line:
     except Exception as e:
         print(f"[エラー] 処理中に例外が発生しました: {e}")
         return prev_last_line, pd.DataFrame()
+
+def get_last_ohlc_time_from_csv(base_dir: str) -> Optional[datetime]:
+    files = sorted(
+        [f for f in os.listdir(base_dir) if f.endswith("_nikkei_mini_future.csv")],
+        reverse=True
+    )
+    for fname in files:
+        df = pd.read_csv(os.path.join(base_dir, fname))
+        if not df.empty and "Time" in df.columns:
+            df["Time"] = pd.to_datetime(df["Time"])
+            return df["Time"].max().replace(second=0, microsecond=0)
+    return None

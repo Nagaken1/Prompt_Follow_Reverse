@@ -20,7 +20,7 @@ class TickWriter:
 
         if self.enable_output:
             date_str = self.current_date.strftime("%Y%m%d")
-            tick_dir = "csv"
+            tick_dir = "tick_csv"
             os.makedirs(tick_dir, exist_ok=True)
 
             self.file_path = os.path.join(tick_dir, f"{date_str}_tick.csv")
@@ -42,7 +42,7 @@ class TickWriter:
             if self.enable_output and self.file:
                 self.file.close()
                 date_str = timestamp.strftime("%Y%m%d")
-                tick_dir = "csv"
+                tick_dir = "tick_csv"
                 self.file_path = os.path.join(tick_dir, f"{date_str}_tick.csv")
                 self.file = open(self.file_path, "a", newline="", encoding="utf-8")
                 self.writer = csv.writer(self.file)

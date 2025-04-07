@@ -2,7 +2,7 @@
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from writer.ohlc_builder import OHLCBuilder
-from utils.time_util import is_closing_end, is_market_closed
+from utils.time_util import is_closing_end, is_market_closed,is_pre_closing_minute,is_closing_minute
 from datetime import datetime, timedelta, time as dtime
 from utils.symbol_resolver import get_active_term
 from utils.export_util import get_last_ohlc_time_from_csv
@@ -26,6 +26,7 @@ class PriceHandler:
         self.latest_timestamp = None
         self.latest_price_status = None
         self.last_written_minute = get_last_ohlc_time_from_csv("csv")
+        self.preclose_base_time = None
 
     def get_latest_price(self) -> Optional[float]:
         """最新の価格を返す"""
@@ -40,6 +41,26 @@ class PriceHandler:
         return self.latest_price_status
 
     def handle_tick(self, price: float, timestamp: datetime, current_price_status: int) -> None:
+        # ✅ プレクロージング補正：tick timestampが15:40:00で固定される場合への対応
+        if is_pre_closing_minute(timestamp.time()):
+            if not hasattr(self, "preclose_tick_index"):
+                self.preclose_tick_index = 0
+            if not hasattr(self, "preclose_base_time") or self.preclose_base_time is None:
+                self.preclose_base_time = timestamp
+
+            if self.preclose_tick_index < 5:
+                adjusted_timestamp = self.preclose_base_time + timedelta(minutes=self.preclose_tick_index)
+                self.preclose_tick_index += 1
+                timestamp = adjusted_timestamp
+                print(f"[補正] プレクロージングtick {self.preclose_tick_index}/5 → {timestamp}")
+            else:
+                print(f"[SKIP] プレクロージングtick {self.preclose_tick_index} 超過 → 無視")
+                return
+        else:
+            self.preclose_tick_index = 0
+            self.preclose_base_time = None  # ✅ リセットを明示的に
+
+        # 通常処理ここから
         self.latest_price = price
         self.latest_timestamp = timestamp
         self.latest_price_status = current_price_status
@@ -59,8 +80,10 @@ class PriceHandler:
 
         # ===== update() を繰り返し呼んで OHLC を返すまで処理 =====
         while True:
+            print(f"[DEBUG][handle_tick] update前: timestamp={timestamp}")  # ← 補正後timestamp確認
             ohlc = self.ohlc_builder.update(price, timestamp, contract_month=contract_month)
             if not ohlc:
+                print(f"[DEBUG][handle_tick] update結果: None（OHLC未確定）")
                 break
 
             ohlc_time = ohlc["time"].replace(second=0, microsecond=0)
@@ -84,7 +107,7 @@ class PriceHandler:
             print(f"[WRITE] OHLC確定: {ohlc_time} 値: {ohlc}")
 
         # ===== クロージングtick用の強制確定処理（15:45 or 6:00）=====
-        if (timestamp.hour == 15 and timestamp.minute == 45) or (timestamp.hour == 6 and timestamp.minute == 0):
+        if is_closing_minute(timestamp.time()):
             print(f"[INFO][handle_tick] クロージングtickをhandle_tickに送ります: {price} @ {timestamp}")
 
             final_ohlc = self.ohlc_builder.force_finalize()

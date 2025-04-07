@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, time
-
+from utils.time_util import is_pre_closing_minute
 
 class OHLCBuilder:
     """
@@ -48,8 +48,7 @@ class OHLCBuilder:
             }
 
             # プレクロージングトリガー判定
-            trigger_times = [time(15, 40), time(5, 55)]
-            if timestamp.time() in trigger_times and self.pre_close_count is None:
+            if is_pre_closing_minute(timestamp.time()) and self.pre_close_count is None:
                 print(f"[TRIGGER] プレクロージング補完フラグをセット: {timestamp.time()}")
                 self.pre_close_count = 5
                 self._pre_close_base_price = price

@@ -39,7 +39,7 @@ class PriceHandler:
         """最新の現値ステータスを返す"""
         return self.latest_price_status
 
-    def handle_tick(self, price: float, timestamp: datetime,current_price_status: int) -> Optional[pd.DataFrame]:
+    def handle_tick(self, price: float, timestamp: datetime, current_price_status: int) -> None:
         self.latest_price = price
         self.latest_timestamp = timestamp
         self.latest_price_status = current_price_status
@@ -47,7 +47,7 @@ class PriceHandler:
         contract_month = get_active_term(timestamp)
 
         if self.tick_writer is not None:
-            self.tick_writer.write_tick(price, timestamp,current_price_status)
+            self.tick_writer.write_tick(price, timestamp, current_price_status)
 
         # 次セッションの最初の価格を記録（ダミー補完に使用）
         if (
@@ -57,47 +57,31 @@ class PriceHandler:
         ):
             self.ohlc_builder.first_price_of_next_session = price
 
-        df = None  # ✅ 最後に返すdf
-
         # ===== update() を繰り返し呼んで OHLC を返すまで処理 =====
         while True:
             ohlc = self.ohlc_builder.update(price, timestamp, contract_month=contract_month)
             if not ohlc:
-                break  # 返ってこなければループ終了
+                break
 
             ohlc_time = ohlc["time"].replace(second=0, microsecond=0)
             current_tick_minute = timestamp.replace(second=0, microsecond=0, tzinfo=None)
 
-            # 同一分または未来分（未確定） → 通常はスキップ
             if ohlc_time >= current_tick_minute and not ohlc["is_dummy"]:
                 print(f"[SKIP] {ohlc_time} は現在分または未来分 → 未確定でスキップ")
                 break
 
-            # ダミーの重複を防ぐ（同一分で複数回出さない）
             if self.last_written_minute and ohlc["is_dummy"] and ohlc_time == self.last_written_minute:
                 print(f"[SKIP] 同一のダミーは出力済みのためスキップ: {ohlc_time}")
                 break
 
-            # 通常の重複チェック
             if self.last_written_minute and ohlc_time <= self.last_written_minute:
                 print(f"[SKIP] 重複のため {ohlc_time} をスキップ")
                 break
 
-            # 書き込み処理
             self.ohlc_writer.write_row(ohlc)
             self.last_written_minute = ohlc_time
             self.ohlc_builder.current_minute = ohlc_time
             print(f"[WRITE] OHLC確定: {ohlc_time} 値: {ohlc}")
-
-            # ✅ OHLC確定ごとにdfを取得
-            new_last_line, latest_df = export_latest_minutes_to_pd(
-                base_dir="csv",
-                minutes=3,
-                prev_last_line=getattr(self, "prev_last_line", "")
-            )
-            self.prev_last_line = new_last_line.strip()
-            df = latest_df  # ✅ 最後に返す用に保存
-            #print("[DEBUG][handle_tick] latest_df:\n", latest_df)
 
         # ===== クロージングtick用の強制確定処理（15:45 or 6:00）=====
         if (timestamp.hour == 15 and timestamp.minute == 45) or (timestamp.hour == 6 and timestamp.minute == 0):
@@ -110,19 +94,8 @@ class PriceHandler:
                     self.ohlc_writer.write_row(final_ohlc)
                     self.last_written_minute = final_time
                     print(f"[INFO][handle_tick] クロージングOHLCを強制出力: {final_time}")
-                    # ✅ クロージングも出力
-                    new_last_line, latest_df = export_latest_minutes_to_pd(
-                        base_dir="csv",
-                        minutes=3,
-                        prev_last_line=getattr(self, "prev_last_line", "")
-                    )
-                    self.prev_last_line = new_last_line.strip()
-                    df = latest_df
-                    #print(df)
                 else:
                     print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
-
-        return df  # ✅ mainなどから受け取れるように返す
 
     def fill_missing_minutes(self, now: datetime):
         if is_market_closed(now):

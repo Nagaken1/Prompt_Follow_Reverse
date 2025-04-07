@@ -58,3 +58,11 @@ def is_closing_minute(minute: dtime) -> bool:
     # t = minute.time() ← これは不要
     t = minute  # そのまま使えばOK
     return t == dtime(15, 45) or t == dtime(6, 0)
+
+def is_opening_minute(minute: dtime) -> bool:
+    """
+    オープニング時間（8:45 または 17:00）かを判定
+    """
+    # t = minute.time() ← これは不要
+    t = minute  # そのまま使えばOK
+    return t == dtime(8, 45) or t == dtime(17, 0)

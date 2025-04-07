@@ -24,10 +24,11 @@ class KabuWebSocketClient:
             data = json.loads(message)
             price = data.get("CurrentPrice")
             timestamp_str = data.get("CurrentPriceTime")
+            current_price_status = data.get("CurrentPriceStatus")
 
             if price is not None and timestamp_str:
                 timestamp = datetime.fromisoformat(timestamp_str)
-                self.price_handler.handle_tick(price, timestamp)
+                self.price_handler.handle_tick(price, timestamp, current_price_status)
 
         except Exception as e:
             print(f"[ERROR] メッセージ処理エラー: {e}")

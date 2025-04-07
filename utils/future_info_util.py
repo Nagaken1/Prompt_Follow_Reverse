@@ -272,3 +272,25 @@ def no_active_orders(token: str) -> bool:
     #        print("発注中の注文はありません")
     #    else:
     #        print("現在発注中の注文があります")
+
+def get_cb_info(symbol: str, exchange: int, api_key: str):
+    url = f"http://localhost:18080/kabusapi/board/{symbol}@{exchange}"
+    headers = {"X-API-KEY": api_key}
+    try:
+        response = requests.get(url, headers=headers)
+        if response.ok:
+            data = response.json()
+            return {
+                "UpperLimitPrice": data.get("UpperLimitPrice"),
+                "LowerLimitPrice": data.get("LowerLimitPrice"),
+                "SpecialQuote": data.get("SpecialQuote"),
+                "TradingSuspension": data.get("TradingSuspension"),
+                "CurrentPrice": data.get("CurrentPrice"),
+                "Timestamp": data.get("CurrentPriceTime")
+            }
+        else:
+            print(f"[WARN] Board取得失敗 status={response.status_code}")
+            return None
+    except Exception as e:
+        print(f"[ERROR] Board取得エラー: {e}")
+        return None

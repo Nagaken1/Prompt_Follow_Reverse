@@ -14,7 +14,7 @@ from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
-from utils.future_info_util import get_token ,register_symbol
+from utils.future_info_util import get_token ,register_symbol,get_cb_info
 from client.dummy_websocket_client import DummyWebSocketClient
 
 
@@ -69,11 +69,15 @@ def main():
 
     try:
         while True:
-            if price_handler.latest_timestamp is None:
+            price = price_handler.get_latest_price()
+            timestamp = price_handler.get_latest_timestamp()
+            status = price_handler.get_current_price_status()
+
+            if timestamp is None:
                 time.sleep(0.1)
                 continue  # Tickが来るまで待機
 
-            now = price_handler.latest_timestamp.replace(second=0, microsecond=0)
+            now = timestamp.replace(second=0, microsecond=0)
 
             # ✅ セッション開始時刻でフラグをリセット
             if now.time() == dtime(8, 45) or now.time() == dtime(17, 0):
@@ -89,6 +93,10 @@ def main():
             # ✅ ザラバ中：足の補完処理のみ（出力はhandle_tick任せ）
             if not is_closing_minute(now.time()):
                 if now.minute != last_checked_minute:
+
+                    if status == 12:
+                        print("サーキットブレイク実施中")
+
                     print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} に fill_missing_minutes を呼び出します。")
                     price_handler.fill_missing_minutes(now)
 
@@ -114,8 +122,8 @@ def main():
             else:
                 if ((now.hour == 15 and now.minute == 45) or (now.hour == 6 and now.minute == 0)) \
                     and not closing_finalized:
-                    print(f"[INFO] クロージングtickをhandle_tickに送ります: {price_handler.latest_price} @ {now}")
-                    price_handler.handle_tick(price_handler.latest_price or 0, now)
+                    print(f"[INFO] クロージングtickをhandle_tickに送ります: {price} @ {now}")
+                    price_handler.handle_tick(price or 0, now, 1)
 
                     # ✅ 最新3分を取得して差分があれば出力
                     new_last_line, df = export_latest_minutes_to_pd(

@@ -22,16 +22,29 @@ class PriceHandler:
         self.last_written_minute = None
         self.latest_price = None
         self.latest_timestamp = None
+        self.latest_price_status = None
 
+    def get_latest_price(self) -> Optional[float]:
+        """最新の価格を返す"""
+        return self.latest_price
 
-    def handle_tick(self, price: float, timestamp: datetime) -> Optional[pd.DataFrame]:
+    def get_latest_timestamp(self) -> Optional[datetime]:
+        """最新の価格時刻を返す"""
+        return self.latest_timestamp
+
+    def get_current_price_status(self) -> Optional[int]:
+        """最新の現値ステータスを返す"""
+        return self.latest_price_status
+
+    def handle_tick(self, price: float, timestamp: datetime,current_price_status: int) -> Optional[pd.DataFrame]:
         self.latest_price = price
         self.latest_timestamp = timestamp
+        self.latest_price_status = current_price_status
 
         contract_month = get_active_term(timestamp)
 
         if self.tick_writer is not None:
-            self.tick_writer.write_tick(price, timestamp)
+            self.tick_writer.write_tick(price, timestamp,current_price_status)
 
         # 次セッションの最初の価格を記録（ダミー補完に使用）
         if (

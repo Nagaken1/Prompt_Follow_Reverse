@@ -12,6 +12,7 @@ class TickWriter:
         self.enable_output = enable_output
         self.current_date = datetime.now().date()
         self.first_file = None
+        self.current_price_status = None
 
         # Tick 出力ファイルの初期化
         self.file = None
@@ -28,10 +29,10 @@ class TickWriter:
 
             # ファイルが空ならヘッダーを書き込む
             if self.file.tell() == 0:
-                self.writer.writerow(["Time", "Price"])
+                self.writer.writerow(["Time", "Price","CurrentPriceStatus"])
 
 
-    def write_tick(self, price, timestamp: datetime):
+    def write_tick(self, price, timestamp: datetime, current_price_status):
         """
         TickデータをCSVファイルに追記する。日付が変わった場合は新しいファイルに切り替える。
         """
@@ -46,13 +47,13 @@ class TickWriter:
                 self.file = open(self.file_path, "a", newline="", encoding="utf-8")
                 self.writer = csv.writer(self.file)
                 if self.file.tell() == 0:
-                    self.writer.writerow(["Time", "Price"])
+                    self.writer.writerow(["Time", "Price","CurrentPriceStatus"])
 
             self.current_date = timestamp.date()
             self.last_written_minute = None  # 日付変更時にリセット
 
         # 書き込む内容を準備
-        row = [timestamp.strftime("%Y/%m/%d %H:%M:%S"), price]
+        row = [timestamp.strftime("%Y/%m/%d %H:%M:%S"), price,current_price_status]
 
         # 通常のTick出力（有効時のみ）
         if self.enable_output and self.writer:

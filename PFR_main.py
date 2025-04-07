@@ -100,7 +100,7 @@ def main():
                 time.sleep(1)
                 continue
 
-            now = timestamp.replace(second=0, microsecond=0)
+            now = timestamp.replace(second=0, microsecond=0, tzinfo=None)
 
             # ✅ セッション開始時刻でフラグをリセット
             if now.time() == dtime(8, 45) or now.time() == dtime(17, 0):

@@ -48,7 +48,8 @@ class DummyWebSocketClient:
                     tick = json.loads(message)
                     price = float(tick["Price"])
                     timestamp = datetime.strptime(tick["Time"], "%Y-%m-%d %H:%M:%S")
-                    self.handler.handle_tick(price, timestamp)
+                    current_price_status = float(tick["CurrentPriceStatus"])
+                    self.handler.handle_tick(price, timestamp, current_price_status)
 
         except Exception as e:
             print(f"[MOCK WS] 接続エラー: {e}")

@@ -7,11 +7,10 @@ import os
 import sys
 import inspect
 
-SEND_INTERVAL = 0.1  # 秒
+SEND_INTERVAL = 0.01  # 秒
 DURATION = 600       # 送信時間（秒）
 
 # ✅ 設定読み込み
-# ルートからたどる（どこで実行してもOKにする）
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 import_path = os.path.join(project_root, "config", "settings.json")
 
@@ -20,7 +19,6 @@ with open(import_path, "r", encoding="utf-8") as f:
 
 python_exec = settings.get("DUMMY_SERVER_PYTHON_EXECUTABLE", sys.executable)
 
-# ✅ デバッグ出力
 print("✅ このDummyServerWebSocket.pyは最新です")
 print("[確認] 実行中のファイル:", os.path.abspath(__file__))
 print("✅ 実行中のPythonインタプリタ:", python_exec)
@@ -35,7 +33,6 @@ async def tick_sender(websocket, path):
     print("[接続] クライアントが接続しました")
 
     try:
-        # ✅ 最新のCSVファイルを取得
         csv_files = [
             os.path.join(TICK_DIR, f)
             for f in os.listdir(TICK_DIR)
@@ -59,11 +56,23 @@ async def tick_sender(websocket, path):
                 break
 
             row = df.iloc[idx]
+
+            # Price と CurrentPriceStatus を安全に取得
+            try:
+                price = float(row["Price"]) if row["Price"] != "" else None
+                status = int(row["CurrentPriceStatus"]) if "CurrentPriceStatus" in row and row["CurrentPriceStatus"] != "" else 1
+                time_str = pd.to_datetime(row["Time"]).strftime("%Y-%m-%d %H:%M:%S")
+            except Exception as e:
+                print(f"[WARN] 行の変換エラー (スキップ): {e}")
+                idx += 1
+                continue
+
             tick = {
                 "Symbol": "165120019",
-                "Price": float(row["Price"]),
+                "Price": price,
                 "Volume": 1,
-                "Time": pd.to_datetime(row["Time"]).strftime("%Y-%m-%d %H:%M:%S")
+                "Time": time_str,
+                "CurrentPriceStatus": status
             }
 
             await websocket.send(json.dumps(tick))

@@ -11,7 +11,7 @@ from client.kabu_websocket import KabuWebSocketClient
 from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
-from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute,is_pre_closing_minute
+from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
 from utils.future_info_util import get_token ,register_symbol
@@ -113,30 +113,56 @@ def main():
                 print("[INFO] 取引終了時刻になったため、自動終了します。")
                 break
 
-            # ✅ プレクロージング中（15:40〜15:44, 5:55〜5:59）→ 毎分補完
-            if is_pre_closing_minute(now.time()):
-                print(f"[INFO] プレクロージング時間 {now.strftime('%H:%M')} に fill_missing_minutes を呼び出します。")
-                price_handler.fill_missing_minutes(now)
-
-            # ✅ ザラバ中 → 1分ごとに補完
-            elif not is_closing_minute(now.time()):
+            # ✅ ザラバ中：足の補完処理のみ（出力はhandle_tick任せ）
+            if not is_closing_minute(now.time()):
                 if now.minute != last_checked_minute:
-                    print(f"[INFO] ザラバ {now.strftime('%H:%M')} に fill_missing_minutes を呼び出します。")
+
+                    print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} に fill_missing_minutes を呼び出します。")
                     price_handler.fill_missing_minutes(now)
+
+                    # ✅ 最新3分を取得して差分があれば出力
+                    new_last_line, df = export_latest_minutes_to_pd(
+                        base_dir="csv",
+                        minutes=3,
+                        prev_last_line=prev_last_line
+                    )
+                    if new_last_line != prev_last_line and df is not None and not df.empty:
+                        prev_last_line = new_last_line.strip()
+                        print("[INFO] handle_tick により最新3分が更新されました:")
+                        print("[INFO] 最新3分のDataFrame ↓↓↓")
+                        print(df)
+                        print("[INFO] ↑↑↑ DataFrameここまで")
+                        print("-" * 50)
+                    else:
+                        print("[DEBUG] dfはNoneまたは空でした")
+
                     last_checked_minute = now.minute
 
-            # ✅ クロージングtick（15:45, 6:00）で handle_tick 呼び出し（1回のみ）
-            if is_closing_minute(now) and not closing_finalized:
-                print(f"[INFO] クロージングtickをtrigger_closing_tickに送ります: {price} @ {now}")
-                df = price_handler.trigger_closing_tick(price or 0, now)
-                if df is not None and not df.empty:
-                    print("[INFO] handle_tick により最新3分が更新されました:")
-                    print("[INFO] 最新3分のDataFrame ↓↓↓")
-                    print(df)
-                    print("[INFO] ↑↑↑ DataFrameここまで")
-                    print("-" * 50)
-                closing_finalized = True
-                last_checked_minute = now.minute
+            # ✅ プレクロージング：15:45 or 6:00 に1回だけ処理
+            else:
+                if ((now.hour == 15 and now.minute == 45) or (now.hour == 6 and now.minute == 0)) \
+                    and not closing_finalized:
+                    print(f"[INFO] クロージングtickをhandle_tickに送ります: {price} @ {now}")
+                    price_handler.handle_tick(price or 0, now, 1)
+
+                    # ✅ 最新3分を取得して差分があれば出力
+                    new_last_line, df = export_latest_minutes_to_pd(
+                        base_dir="csv",
+                        minutes=3,
+                        prev_last_line=prev_last_line
+                    )
+                    if new_last_line != prev_last_line and df is not None and not df.empty:
+                        prev_last_line = new_last_line.strip()
+                        print("[INFO] handle_tick により最新3分が更新されました:")
+                        print("[INFO] 最新3分のDataFrame ↓↓↓")
+                        print(df)
+                        print("[INFO] ↑↑↑ DataFrameここまで")
+                        print("-" * 50)
+                    else:
+                        print("[DEBUG] dfはNoneまたは空でした")
+
+                    closing_finalized = True
+                    last_checked_minute = now.minute
 
             time.sleep(1)
 

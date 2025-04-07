@@ -75,9 +75,28 @@ def main():
 
             if timestamp is None:
                 # ✅ tickが来ていない状態でも、statusだけはログする
-                if status == 12:
-                    now = datetime.now().replace(second=0, microsecond=0)
+                now = datetime.now().replace(second=0, microsecond=0)
+
+                if status == 12:  # サーキットブレイク中
                     print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} サーキットブレイク実施中（tick未到達）")
+
+                    if now.minute != last_checked_minute:
+                        print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} サーキットブレイク中でも fill_missing_minutes を呼び出します。")
+                        price_handler.fill_missing_minutes(now)
+
+                        new_last_line, df = export_latest_minutes_to_pd(
+                            base_dir="csv",
+                            minutes=3,
+                            prev_last_line=prev_last_line
+                        )
+                        if new_last_line != prev_last_line and df is not None and not df.empty:
+                            prev_last_line = new_last_line.strip()
+                            print("[INFO] サーキットブレイク中にダミーで更新された最新3分:")
+                            print(df)
+                            print("-" * 50)
+
+                        last_checked_minute = now.minute
+
                 time.sleep(1)
                 continue
 

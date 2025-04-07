@@ -64,7 +64,8 @@ def update_if_changed(prev_last_line):
     )
     if new_last_line != prev_last_line and df is not None and not df.empty:
         print("[INFO] 最新3分のDataFrame ↓↓↓")
-        print(df)
+        print("[DEBUG] update_if_changed called, new_last_line:", new_last_line)
+        print(df.reset_index(drop=True).to_string())
         print("[INFO] ↑↑↑ DataFrameここまで")
         print("-" * 50)
         #ここにザラバ中の処理を書く

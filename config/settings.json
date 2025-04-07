@@ -4,6 +4,6 @@
     "FUTURE_CODE": "NK225mini",
     "ENABLE_TICK_OUTPUT": true,
     "DUMMY_URL": "ws://localhost:9000",
-    "DUMMY_TICK_TEST_MODE": true,
+    "DUMMY_TICK_TEST_MODE": false,
     "DUMMY_SERVER_PYTHON_EXECUTABLE": "C:\\Users\\永井　健介\\AppData\\Local\\Programs\\Python\\Python313\\python.exe"
 }

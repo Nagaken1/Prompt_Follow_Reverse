@@ -3,6 +3,8 @@ from config.settings import API_BASE_URL, get_api_password
 import json
 import requests
 import pandas as pd
+from datetime import timedelta, datetime
+from typing import Optional
 
 def get_token() -> str:
     """APIトークンを取得する"""
@@ -293,4 +295,43 @@ def get_cb_info(symbol: str, exchange: int, api_key: str):
             return None
     except Exception as e:
         print(f"[ERROR] Board取得エラー: {e}")
+        return None
+
+def get_previous_close_price(now: datetime, base_dir: str = "csv") -> Optional[float]:
+    """
+    指定フォルダ内で最も新しい *_ohlc.csv ファイルを見つけて、最終行の終値を返す。
+    """
+    try:
+        # ディレクトリ内のファイル一覧を取得
+        files = os.listdir(base_dir)
+
+        # *_ohlc.csv だけを抽出
+        ohlc_files = [
+            f for f in files
+            if f.endswith("_ohlc.csv")
+        ]
+
+        if not ohlc_files:
+            print(f"[WARN] OHLCファイルが見つかりません（ディレクトリ: {base_dir}）")
+            return None
+
+        # ファイル名に日付が含まれている前提でソート（降順）
+        ohlc_files.sort(reverse=True)
+
+        for fname in ohlc_files:
+            path = os.path.join(base_dir, fname)
+            try:
+                df = pd.read_csv(path)
+                if not df.empty:
+                    close_price = df.iloc[-1]["close"]
+                    print(f"[INFO] 最新OHLCファイルから終値を取得: {fname} → {close_price}")
+                    return close_price
+            except Exception as e:
+                print(f"[WARN] ファイル読み取り失敗: {fname} → {e}")
+
+        print("[WARN] 有効なOHLCファイルが見つかりませんでした")
+        return None
+
+    except Exception as e:
+        print(f"[ERROR] get_previous_close_price エラー: {e}")
         return None

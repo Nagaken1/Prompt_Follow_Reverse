@@ -8,6 +8,7 @@ from utils.symbol_resolver import get_active_term
 from utils.export_util import export_latest_minutes_to_pd
 import pandas as pd
 from typing import Optional
+from utils.future_info_util import get_previous_close_price  # 事前に作るユーティリティ想定
 
 class PriceHandler:
     """
@@ -126,28 +127,41 @@ class PriceHandler:
             print(f"[DEBUG][fill_missing_minutes] 市場閉場中のため補完スキップ: {now}")
             return
 
+        # 🔧 OHLC未初期化なら前日のCSVから終値を取得して初期化
         if self.ohlc_builder.current_minute is None or self.ohlc_builder.ohlc is None:
-            print(f"[DEBUG][fill_missing_minutes] current_minute 未定義のため補完スキップ")
-            return
+            print(f"[INFO][fill_missing_minutes] current_minute 未定義のため前日の終値から補完を開始します")
+            prev_close = get_previous_close_price(now)
+            if prev_close is None:
+                print(f"[WARN] 前日終値が取得できなかったため補完スキップ")
+                return
 
+            prev_date = now.date() - timedelta(days=1)
+            last_time = datetime.combine(prev_date, datetime.min.time()) + timedelta(hours=15, minutes=15)
+
+            dummy = {
+                "time": last_time,
+                "open": prev_close,
+                "high": prev_close,
+                "low": prev_close,
+                "close": prev_close,
+                "is_dummy": True,
+                "contract_month": "from_prev_day"
+            }
+
+            self.ohlc_builder.ohlc = dummy
+            self.ohlc_builder.current_minute = last_time
+            self.last_written_minute = last_time
+
+        # 🧮 通常の補完処理
         current_minute = now.replace(second=0, microsecond=0, tzinfo=None)
         last_minute = self.ohlc_builder.current_minute
 
-        print(f"[DEBUG] fill_missing_minutes() 呼び出し")
-        print(f"[DEBUG] last_ohlc.ohlc_time = {last_minute}")
-        print(f"[DEBUG] current_minute = {current_minute}")
-        print(f"[DEBUG] self.last_written_minute = {self.last_written_minute}")
-
-        # last_written_minute を基準に補完スキップを判断
         if current_minute <= last_minute:
             print(f"[DEBUG][fill_missing_minutes] 補完不要: now={now}, current={current_minute}, last_written_minute={self.last_written_minute}")
             return
 
         while last_minute + timedelta(minutes=1) <= current_minute:
-            print(f"[DEBUG][fill_missing_minutes] 補完開始: from {last_minute + timedelta(minutes=1)} to {current_minute - timedelta(minutes=1)}")
             next_minute = last_minute + timedelta(minutes=1)
-            print(f"[TRACE] next_minute = {next_minute}")
-
             if is_market_closed(next_minute):
                 print(f"[DEBUG][fill_missing_minutes] 補完対象が無音時間のためスキップ: {next_minute}")
                 last_minute = next_minute
@@ -167,8 +181,6 @@ class PriceHandler:
             }
 
             dummy_time = dummy["time"].replace(second=0, microsecond=0)
-            print(f"[TRACE] dummy_time = {dummy_time}, last_written_minute = {self.last_written_minute}")
-
             if not self.last_written_minute or dummy_time > self.last_written_minute:
                 print(f"[DEBUG][fill_missing_minutes] ダミー補完: {dummy_time}")
                 self.ohlc_writer.write_row(dummy)

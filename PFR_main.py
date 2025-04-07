@@ -78,7 +78,7 @@ def main():
                 if status == 12:
                     now = datetime.now().replace(second=0, microsecond=0)
                     print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} サーキットブレイク実施中（tick未到達）")
-                time.sleep(0.1)
+                time.sleep(1)
                 continue
 
             now = timestamp.replace(second=0, microsecond=0)

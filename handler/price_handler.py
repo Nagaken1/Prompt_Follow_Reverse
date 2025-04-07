@@ -99,30 +99,39 @@ class PriceHandler:
             df = latest_df  # ✅ 最後に返す用に保存
             #print("[DEBUG][handle_tick] latest_df:\n", latest_df)
 
-        # ===== クロージングtick用の強制確定処理（15:45 or 6:00）=====
-        if (timestamp.hour == 15 and timestamp.minute == 45) or (timestamp.hour == 6 and timestamp.minute == 0):
-            print(f"[INFO][handle_tick] クロージングtickをhandle_tickに送ります: {price} @ {timestamp}")
-
-            final_ohlc = self.ohlc_builder.force_finalize()
-            if final_ohlc:
-                final_time = final_ohlc["time"].replace(second=0, microsecond=0)
-                if not self.last_written_minute or final_time > self.last_written_minute:
-                    self.ohlc_writer.write_row(final_ohlc)
-                    self.last_written_minute = final_time
-                    print(f"[INFO][handle_tick] クロージングOHLCを強制出力: {final_time}")
-                    # ✅ クロージングも出力
-                    new_last_line, latest_df = export_latest_minutes_to_pd(
-                        base_dir="csv",
-                        minutes=3,
-                        prev_last_line=getattr(self, "prev_last_line", "")
-                    )
-                    self.prev_last_line = new_last_line.strip()
-                    df = latest_df
-                    #print(df)
-                else:
-                    print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
-
         return df  # ✅ mainなどから受け取れるように返す
+
+    def trigger_closing_tick(self, price: float, timestamp: datetime) -> Optional[pd.DataFrame]:
+        """クロージングtick用のOHLC強制確定処理"""
+        print(f"[INFO][trigger_closing_tick] クロージングtickを処理します: {price} @ {timestamp}")
+
+        self.latest_price = price
+        self.latest_timestamp = timestamp
+        self.latest_price_status = None  # クロージングtickではstatusは使わない前提
+
+        final_ohlc = self.ohlc_builder.force_finalize()
+        df = None
+
+        if final_ohlc:
+            final_time = final_ohlc["time"].replace(second=0, microsecond=0)
+            if not self.last_written_minute or final_time > self.last_written_minute:
+                self.ohlc_writer.write_row(final_ohlc)
+                self.last_written_minute = final_time
+                print(f"[INFO][trigger_closing_tick] クロージングOHLCを強制出力: {final_time}")
+
+                new_last_line, latest_df = export_latest_minutes_to_pd(
+                    base_dir="csv",
+                    minutes=3,
+                    prev_last_line=getattr(self, "prev_last_line", "")
+                )
+                self.prev_last_line = new_last_line.strip()
+                df = latest_df
+            else:
+                print(f"[INFO][trigger_closing_tick] クロージングOHLCはすでに出力済み: {final_time}")
+        else:
+            print("[INFO][trigger_closing_tick] force_finalize() でOHLCが生成されませんでした")
+
+        return df
 
     def fill_missing_minutes(self, now: datetime):
         if is_market_closed(now):
@@ -164,6 +173,13 @@ class PriceHandler:
 
         while last_minute + timedelta(minutes=1) <= current_minute:
             next_minute = last_minute + timedelta(minutes=1)
+
+            # クロージング時間はtickが来るのを待つので補完しない（15:45 or 6:00）
+            if (next_minute.hour == 15 and next_minute.minute == 45) or \
+            (next_minute.hour == 6 and next_minute.minute == 0):
+                print(f"[DEBUG][fill_missing_minutes] クロージング時間はtick待ちのため補完しません: {next_minute}")
+                break
+
             if is_market_closed(next_minute):
                 print(f"[DEBUG][fill_missing_minutes] 補完対象が無音時間のためスキップ: {next_minute}")
                 last_minute = next_minute

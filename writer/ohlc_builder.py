@@ -12,7 +12,6 @@ class OHLCBuilder:
         self.ohlc = None
         self.first_price_of_next_session = None
         self.closing_completed_session = None  # ← セッション単位で記録
-        self.pre_close_count = None
         self.last_dummy_minute = None
 
     def update(self, price: float, timestamp: datetime, contract_month=None) -> dict:
@@ -47,41 +46,8 @@ class OHLCBuilder:
                 "contract_month": contract_month
             }
 
-            # プレクロージングトリガー判定
-            trigger_times = [time(15, 40), time(5, 55)]
-            if timestamp.time() in trigger_times and self.pre_close_count is None:
-                print(f"[TRIGGER] プレクロージング補完フラグをセット: {timestamp.time()}")
-                self.pre_close_count = 5
-                self._pre_close_base_price = price
-                self._pre_close_base_minute = minute
-
             return completed
 
-        if self.pre_close_count and self.pre_close_count > 0:
-            next_dummy_time = self._pre_close_base_minute + timedelta(minutes=5 - self.pre_close_count)
-            dummy = {
-                "time": next_dummy_time,
-                "open": self._pre_close_base_price,
-                "high": self._pre_close_base_price,
-                "low": self._pre_close_base_price,
-                "close": self._pre_close_base_price,
-                "is_dummy": True,
-                "contract_month": "dummy"
-            }
-            self.pre_close_count -= 1
-            self.current_minute = next_dummy_time
-            self.ohlc = dummy
-
-            self.last_dummy_minute = next_dummy_time
-
-            #  print()はカウント減らす前にやる！
-            print(f"[DUMMY] プレクロージング補完 {5 - self.pre_close_count}/5: {dummy['time']}")
-
-            if self.pre_close_count == 0:
-                self.pre_close_count = None
-                print("[INFO] プレクロージング補完完了 → 通常処理に復帰")
-
-            return dummy
 
         # 同一分内の更新
         if minute == self.current_minute:

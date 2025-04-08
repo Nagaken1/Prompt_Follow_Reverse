@@ -141,14 +141,25 @@ def run_main_loop(price_handler, ws_client, end_time=None):
                     last_checked_minute = now
                 prev_last_line = update_if_changed(prev_last_line)
 
-            # プレクロージング（tick停滞補完）
+            # プレクロージング or クロージング時刻 → 補完＋クロージングtick処理
             else:
                 if not closing_finalized:
+                    diff = int((now - last_checked_minute).total_seconds() // 60) - 1 if last_checked_minute else 0
+                    if diff > 0:
+                        print(f"[INFO] 分飛び補完: {diff}分 (from {last_checked_minute} to {now})")
+                    else:
+                        print(f"[INFO] クロージング時刻 {now.time()} に到達 → 補完は不要")
+
+                    price_handler.fill_missing_minutes(
+                        start_minute=last_checked_minute,
+                        end_minute=now.time()
+                    )
                     print(f"[INFO] クロージングtickをhandle_tickに送信: {price} @ {now}")
                     price_handler.handle_tick(price or 0, now, 1)
                     prev_last_line = update_if_changed(prev_last_line)
                     closing_finalized = True
                     last_checked_minute = now
+
 
             time.sleep(1)
 

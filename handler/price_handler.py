@@ -90,7 +90,7 @@ class PriceHandler:
         if is_closing_minute(timestamp.time()):
             print(f"[INFO][handle_tick] クロージングtickをhandle_tickに送ります: {price} @ {timestamp}")
 
-            final_ohlc = self.ohlc_builder.force_finalize()
+            final_ohlc = self.ohlc_builder.force_finalize(timestamp)
             if final_ohlc:
                 final_time = final_ohlc["time"].replace(second=0, microsecond=0)
                 if not self.last_written_minute or final_time > self.last_written_minute:

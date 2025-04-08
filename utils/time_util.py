@@ -74,3 +74,27 @@ def is_pre_closing_minute(minute: dtime) -> bool:
     # t = minute.time() ← これは不要
     t = minute  # そのまま使えばOK
     return t == dtime(15, 40) or t == dtime(5, 55)
+
+def get_next_closing_time(now: datetime) -> datetime:
+    """
+    現在時刻に基づいて、次に訪れるクロージング時刻（15:45 または 翌6:00）を返す。
+    """
+    today = now.date()
+    day_closing = datetime.combine(today, dtime(15, 45))
+    night_closing = datetime.combine(today, dtime(6, 0))
+
+    if now.time() < dtime(6, 0):
+        return night_closing
+    elif now.time() < dtime(15, 45):
+        return day_closing
+    else:
+        # 翌営業日の 6:00（夜間クロージング）
+        return night_closing + timedelta(days=1)
+
+def is_pre_closing_period(t: dtime) -> bool:
+    """
+    プレクロージングの時間帯に該当するかを判定
+    日中: 15:35〜15:44
+    夜間: 05:50〜05:59
+    """
+    return (dtime(15, 35) <= t <= dtime(15, 44)) or (dtime(5, 50) <= t <= dtime(5, 59))

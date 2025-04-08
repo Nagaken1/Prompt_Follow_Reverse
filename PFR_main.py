@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from datetime import datetime, time as dtime
+import logging
 
 from config.logger import setup_logger
 from config.settings import ENABLE_TICK_OUTPUT, DUMMY_TICK_TEST_MODE, DUMMY_URL
@@ -10,7 +11,7 @@ from client.dummy_websocket_client import DummyWebSocketClient
 from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
-from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute, is_opening_minute
+from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute, is_opening_minute, is_day_session
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
 from utils.future_info_util import get_token, register_symbol
@@ -51,7 +52,13 @@ def initialize_components(now):
 
     export_connection_info(symbol_code, exchange_code, token)
     ws_client = KabuWebSocketClient(price_handler)
-    end_time = datetime.combine(get_trade_date(now), dtime(6, 5)) if is_night_session(now) else None
+
+    if is_night_session(now):
+        end_time = datetime.combine(get_trade_date(now), dtime(6, 5))
+    elif is_day_session(now):
+        end_time = datetime.combine(now.date(), dtime(15, 50))
+    else:
+        end_time = None
 
     return ohlc_writer, tick_writer, price_handler, ws_client, end_time
 
@@ -134,6 +141,7 @@ def shutdown(price_handler, ws_client):
 
 def main():
     now = datetime.now().replace(tzinfo=None)
+
     setup_environment()
 
     ohlc_writer, tick_writer, price_handler, ws_client, end_time = initialize_components(now)

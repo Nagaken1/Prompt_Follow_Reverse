@@ -98,3 +98,11 @@ def is_pre_closing_period(t: dtime) -> bool:
     夜間: 05:50〜05:59
     """
     return (dtime(15, 35) <= t <= dtime(15, 44)) or (dtime(5, 50) <= t <= dtime(5, 59))
+
+def is_day_session(now: datetime) -> bool:
+    """
+    日中セッション中かを判定。
+    通常、8:45〜15:45未満を日中セッションとみなす。
+    """
+    t = now.time()
+    return dtime(8, 45) <= t < dtime(15, 45)

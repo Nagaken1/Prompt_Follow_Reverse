@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from datetime import datetime, time as dtime
+from datetime import timedelta
 import logging
 
 from config.logger import setup_logger
@@ -82,9 +83,9 @@ def update_if_changed(prev_last_line):
         return prev_last_line
 
 
-def run_main_loop(price_handler, ws_client, end_time):
+def run_main_loop(price_handler, ws_client, end_time=None):
     ws_client.start()
-    last_checked_minute = -1
+    last_checked_minute = None  # datetime型として初期化
     closing_finalized = False
     prev_last_line = ""
 
@@ -96,38 +97,61 @@ def run_main_loop(price_handler, ws_client, end_time):
 
             now = datetime.now().replace(second=0, microsecond=0) if timestamp is None else timestamp.replace(second=0, microsecond=0, tzinfo=None)
 
+            # サーキットブレイク中（tickなし）
             if timestamp is None:
-                if status == 12 and now.minute != last_checked_minute:
-                    print(f"[INFO] サーキットブレイク中でも fill_missing_minutes を呼び出します。")
-                    price_handler.fill_missing_minutes(now)
-                    prev_last_line = update_if_changed(prev_last_line)
-                    last_checked_minute = now.minute
-                time.sleep(1)
-                continue
+                if status == 12:
+                    if last_checked_minute is None:
+                        last_checked_minute = now
+                        print(f"[INFO] 初回サーキットブレイクtick。補完スキップ: {now}")
+                    else:
+                        diff = int((now - last_checked_minute).total_seconds() // 60) - 1
+                        if diff > 0:
+                            print(f"[INFO] サーキットブレイク中の分飛び補完: {diff}分")
+                            price_handler.fill_missing_minutes(
+                                start_minute=last_checked_minute,
+                                end_minute=now.time()
+                            )
+                            last_checked_minute = now
+                    time.sleep(1)
+                    continue
 
+            # セッション再開判定（夜→朝など）
             if is_opening_minute(now.time()) and closing_finalized:
-                print(f"[INFO] セッション開始 {now.time()} のため closing_finalized をリセットします。")
+                print(f"[INFO] セッション再開 {now.time()} により closing_finalized をリセット")
                 closing_finalized = False
 
+            # セッション終了判定
             if end_time and now >= end_time:
-                print("[INFO] 取引終了時刻になったため、自動終了します。")
+                print("[INFO] 取引終了時刻に達したため終了")
                 break
 
+            # 通常補完処理（tickあり）
             if not is_closing_minute(now.time()):
-                if now.minute != last_checked_minute:
-                    print(f"[INFO] {now.strftime('%Y/%m/%d %H:%M:%S')} に fill_missing_minutes を呼び出します。")
-                    price_handler.fill_missing_minutes(now)
-                    prev_last_line = update_if_changed(prev_last_line)
-                    last_checked_minute = now.minute
+                if last_checked_minute is None:
+                    print(f"[INFO] 初回tick検出。補完スキップ: {now}")
+                    last_checked_minute = now
+                else:
+                    diff = int((now - last_checked_minute).total_seconds() // 60) - 1
+                    if diff > 0:
+                        print(f"[INFO] 分飛び補完: {diff}分 (from {last_checked_minute} to {now})")
+                        price_handler.fill_missing_minutes(
+                            start_minute=last_checked_minute,
+                            end_minute=now.time()
+                        )
+                    last_checked_minute = now
+                prev_last_line = update_if_changed(prev_last_line)
+
+            # プレクロージング（tick停滞補完）
             else:
                 if not closing_finalized:
-                    print(f"[INFO] クロージングtickをhandle_tickに送ります: {price} @ {now}")
+                    print(f"[INFO] クロージングtickをhandle_tickに送信: {price} @ {now}")
                     price_handler.handle_tick(price or 0, now, 1)
                     prev_last_line = update_if_changed(prev_last_line)
                     closing_finalized = True
-                    last_checked_minute = now.minute
+                    last_checked_minute = now
 
             time.sleep(1)
+
 
     finally:
         shutdown(price_handler, ws_client)

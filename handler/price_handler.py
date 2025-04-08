@@ -100,74 +100,44 @@ class PriceHandler:
                 else:
                     print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
 
-    def fill_missing_minutes(self, now: datetime):
-        if is_market_closed(now):
-            print(f"[DEBUG][fill_missing_minutes] 市場閉場中のため補完スキップ: {now}")
-            return
+    def fill_missing_minutes(self, start_minute: datetime, end_minute: dtime):
+        """
+        指定された開始時刻からend_timeまでの間の欠損分を1分足で補完する
+        :param start_minute: 最後に出力されたOHLCの時刻（datetime型）
+        :param end_time: 現在時点での最新timestampの「時:分」（dtime型）
+        """
+        current = start_minute + timedelta(minutes=1)
 
-        # 🔧 OHLC未初期化なら前日のCSVから終値を取得して初期化
-        if self.ohlc_builder.current_minute is None or self.ohlc_builder.ohlc is None:
-            print(f"[INFO][fill_missing_minutes] current_minute 未定義のため前日の終値から補完を開始します")
-            prev_close = get_previous_close_price(now)
-            if prev_close is None:
-                print(f"[WARN] 前日終値が取得できなかったため補完スキップ")
-                return
+        print(f"[INFO][fill_missing_minutes] 補完処理開始: {current.time()}〜{end_minute}")
 
-            prev_date = now.date() - timedelta(days=1)
-            last_time = datetime.combine(prev_date, datetime.min.time()) + timedelta(hours=15, minutes=15)
-
-            dummy = {
-                "time": last_time,
-                "open": prev_close,
-                "high": prev_close,
-                "low": prev_close,
-                "close": prev_close,
-                "is_dummy": True,
-                "contract_month": "from_prev_day"
-            }
-
-            self.ohlc_builder.ohlc = dummy
-            self.ohlc_builder.current_minute = last_time
-            self.last_written_minute = last_time
-
-        # 🧮 通常の補完処理
-        current_minute = now.replace(second=0, microsecond=0, tzinfo=None)
-        last_minute = self.ohlc_builder.current_minute
-
-        if current_minute <= last_minute:
-            print(f"[DEBUG][fill_missing_minutes] 補完不要: now={now}, current={current_minute}, last_written_minute={self.last_written_minute}")
-            return
-
-        while last_minute + timedelta(minutes=1) <= current_minute:
-            next_minute = last_minute + timedelta(minutes=1)
-            if is_market_closed(next_minute):
-                print(f"[DEBUG][fill_missing_minutes] 補完対象が無音時間のためスキップ: {next_minute}")
-                last_minute = next_minute
+        while current.time() < end_minute:
+            if is_market_closed(current):
+                print(f"[SKIP][fill_missing_minutes] 市場閉場中のため補完スキップ: {current}")
+                current += timedelta(minutes=1)
                 continue
 
-            last_minute = next_minute
-            last_close = self.ohlc_builder.ohlc["close"]
+            if self.last_written_minute and current <= self.last_written_minute:
+                print(f"[SKIP][fill_missing_minutes] すでに出力済み: {current} <= {self.last_written_minute}")
+                current += timedelta(minutes=1)
+                continue
 
             dummy = {
-                "time": last_minute,
-                "open": last_close,
-                "high": last_close,
-                "low": last_close,
-                "close": last_close,
+                "time": current,
+                "open": self.latest_price,
+                "high": self.latest_price,
+                "low": self.latest_price,
+                "close": self.latest_price,
                 "is_dummy": True,
                 "contract_month": "dummy"
             }
 
-            dummy_time = dummy["time"].replace(second=0, microsecond=0)
-            if not self.last_written_minute or dummy_time > self.last_written_minute:
-                print(f"[DEBUG][fill_missing_minutes] ダミー補完: {dummy_time}")
-                self.ohlc_writer.write_row(dummy)
-                self.last_written_minute = dummy_time
-                self.ohlc_builder.current_minute = dummy_time
-                self.ohlc_builder.ohlc = dummy
-            else:
-                print(f"[DEBUG][fill_missing_minutes] 重複のため補完打ち切り: {dummy_time}")
-                break
+            print(f"[FILL][fill_missing_minutes] ダミー補完: {current}")
+            self.ohlc_writer.write_row(dummy)
+            self.last_written_minute = current
+            self.ohlc_builder.current_minute = current
+            self.ohlc_builder.ohlc = dummy
+
+            current += timedelta(minutes=1)
 
     def finalize_ohlc(self):
         final = self.ohlc_builder._finalize_ohlc()

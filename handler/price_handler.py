@@ -121,20 +121,6 @@ class PriceHandler:
                 current += timedelta(minutes=1)
                 continue
 
-            # 補完に使用する終値を決定
-            #if self.ohlc_builder.ohlc:
-            #    last_close = self.ohlc_builder.ohlc["close"]
-            #elif base_price is not None:
-            #    last_close = base_price
-            #    print(f"[INFO][fill_missing_minutes] base_priceを使用して補完: {last_close}")
-            #elif self.latest_price is not None:
-            #    last_close = self.latest_price
-            #    print(f"[WARN][fill_missing_minutes] base_priceもOHLCもなし → latest_priceで補完: {last_close}")
-            #else:
-             #   print("[ERROR][fill_missing_minutes] 補完価格が取得できません。スキップします。")
-            #    current += timedelta(minutes=1)
-            #    continue
-
             dummy = {
                 "time": current,
                 "open": base_price,

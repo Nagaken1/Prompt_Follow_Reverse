@@ -64,7 +64,7 @@ def is_day_session(now: datetime) -> bool:
     t = now.time()
     return dtime(8, 45) <= t < dtime(15, 45)
 
-def set_initial_checked_minute(price_handler, now: datetime, base_dir: str = "csv"):
+def get_initial_checked_minute( now: datetime, base_dir: str = "csv") -> datetime:
     from datetime import datetime, time as dtime
     from utils.time_util import is_day_session, is_night_session
     from utils.export_util import get_last_ohlc_time_from_csv
@@ -73,17 +73,17 @@ def set_initial_checked_minute(price_handler, now: datetime, base_dir: str = "cs
 
     if last_ohlc_time:
         if is_day_session(now) and last_ohlc_time.time() >= dtime(5, 0):
-            price_handler.last_checked_minute = datetime.combine(now.date(), dtime(8, 44))
+            last_checked_minute = datetime.combine(now.date(), dtime(8, 44))
             print(f"[INFO] 日中セッション補完を 8:45 から開始します")
         elif is_night_session(now) and last_ohlc_time.time() >= dtime(14, 0):
-            price_handler.last_checked_minute = datetime.combine(now.date(), dtime(16, 59))
+            last_checked_minute = datetime.combine(now.date(), dtime(16, 59))
             print(f"[INFO] 夜間セッション補完を 17:00 から開始します")
         else:
-            price_handler.last_checked_minute = last_ohlc_time
+            last_checked_minute = last_ohlc_time
             print(f"[INFO] 最後に出力されたOHLC時刻から補完を開始: {last_ohlc_time}")
     else:
         print("[INFO] 出力済みOHLCが見つからなかったため、補完開始時刻は起動時刻以降")
-
+    return last_checked_minute
 
 def get_session_end_time(now: datetime) -> datetime | None:
     """

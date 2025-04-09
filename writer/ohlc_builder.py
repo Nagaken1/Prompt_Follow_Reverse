@@ -77,16 +77,3 @@ class OHLCBuilder:
             }
 
         return self.ohlc.copy()
-
-    def _get_session_id(self, dt: datetime) -> str:
-        t = dt.time()
-        if t < dtime(6, 0):
-            session_date = (dt - timedelta(days=1)).date()
-            session_type = "night"
-        elif t < dtime(15, 30):
-            session_date = dt.date()
-            session_type = "day"
-        else:
-            session_date = dt.date()
-            session_type = "night"
-        return f"{session_date.strftime('%Y%m%d')}_{session_type}"

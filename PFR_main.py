@@ -14,7 +14,7 @@ from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute, is_opening_minute, is_day_session
 from utils.symbol_resolver import get_active_term, get_symbol_code
-from utils.export_util import export_connection_info, export_latest_minutes_to_pd
+from utils.export_util import export_connection_info, export_latest_minutes_to_pd,get_last_ohlc_time_from_csv
 from utils.future_info_util import get_token, register_symbol,get_previous_close_price
 
 
@@ -60,6 +60,25 @@ def initialize_components(now):
         end_time = datetime.combine(now.date(), dtime(15, 50))
     else:
         end_time = None
+
+    # ✅ 補完開始基準の初期設定
+    last_ohlc_time = get_last_ohlc_time_from_csv("csv")
+
+    if last_ohlc_time:
+        if is_day_session(now) and last_ohlc_time.time() >= dtime(5, 0):
+            # 日中で、夜間が終わっていれば → 8:44から始める → 8:45が補完対象となる
+            price_handler.last_checked_minute = datetime.combine(now.date(), dtime(8, 44))
+            print(f"[INFO] 日中セッション補完を 8:45 から開始します")
+        elif is_night_session(now) and last_ohlc_time.time() >= dtime(14, 0):
+            # 夜間で、日中が終わっていれば → 16:59から始める → 17:00が補完対象となる
+            price_handler.last_checked_minute = datetime.combine(now.date(), dtime(16, 59))
+            print(f"[INFO] 夜間セッション補完を 17:00 から開始します")
+        else:
+            # 通常どおり、最後に出力されたOHLCの時刻から補完
+            price_handler.last_checked_minute = last_ohlc_time
+            print(f"[INFO] 最後に出力されたOHLC時刻から補完を開始: {last_ohlc_time}")
+    else:
+        print("[INFO] 出力済みOHLCが見つからなかったため、補完開始時刻は起動時刻以降")
 
     return ohlc_writer, tick_writer, price_handler, ws_client, end_time
 

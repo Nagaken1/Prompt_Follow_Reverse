@@ -133,13 +133,40 @@ def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line:
         return prev_last_line, pd.DataFrame()
 
 def get_last_ohlc_time_from_csv(base_dir: str) -> Optional[datetime]:
-    files = sorted(
-        [f for f in os.listdir(base_dir) if f.endswith("_nikkei_mini_future.csv")],
-        reverse=True
-    )
-    for fname in files:
-        df = pd.read_csv(os.path.join(base_dir, fname))
-        if not df.empty and "Time" in df.columns:
-            df["Time"] = pd.to_datetime(df["Time"])
-            return df["Time"].max().replace(second=0, microsecond=0)
-    return None
+    """
+    base_dir 内のすべての CSV ファイルを対象に、
+    最も新しい（最大の）Time を持つ OHLC の時刻を返す。
+    """
+    try:
+        csv_files = [
+            os.path.join(base_dir, f)
+            for f in os.listdir(base_dir)
+            if f.endswith(".csv")
+        ]
+
+        if not csv_files:
+            print(f"[WARN] CSVファイルが見つかりません（ディレクトリ: {base_dir}）")
+            return None
+
+        latest_time = None
+
+        for path in csv_files:
+            try:
+                df = pd.read_csv(path)
+                if not df.empty and "Time" in df.columns:
+                    df["Time"] = pd.to_datetime(df["Time"])
+                    max_time = df["Time"].max()
+                    if latest_time is None or max_time > latest_time:
+                        latest_time = max_time
+            except Exception as e:
+                print(f"[WARN] ファイル読み取り失敗: {os.path.basename(path)} → {e}")
+
+        if latest_time:
+            return latest_time.replace(second=0, microsecond=0)
+        else:
+            print("[WARN] 有効なTimeを持つデータが見つかりませんでした")
+            return None
+
+    except Exception as e:
+        print(f"[ERROR] get_last_ohlc_time_from_csv エラー: {e}")
+        return None

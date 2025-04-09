@@ -27,6 +27,13 @@ class PriceHandler:
         self.latest_price_status = None
         self.last_written_minute = get_last_ohlc_time_from_csv("csv")
 
+        # ✅ 追加：前回セッションの終値を保持（補完の初期値に使用）
+        self.previous_close_price = get_previous_close_price(datetime.now())
+
+        if self.previous_close_price:
+            print(f"[INFO][__init__] 前回セッションの終値: {self.previous_close_price}")
+        else:
+            print("[WARN][__init__] 前回セッションの終値が取得できませんでした。")
 
     def get_latest_price(self) -> Optional[float]:
         """最新の価格を返す"""
@@ -92,11 +99,12 @@ class PriceHandler:
                 else:
                     print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
 
-    def fill_missing_minutes(self, start_minute: datetime, end_minute: dtime):
+    def fill_missing_minutes(self, start_minute: datetime, end_minute: dtime, base_price: Optional[float] = None):
         """
-        指定された開始時刻からend_timeまでの間の欠損分を1分足で補完する
+        指定された開始時刻から end_time までの間の欠損分を1分足で補完する。
         :param start_minute: 最後に出力されたOHLCの時刻（datetime型）
-        :param end_time: 現在時点での最新timestampの「時:分」（dtime型）
+        :param end_minute: 現在時点での最新timestampの「時:分」（dtime型）
+        :param base_price: OHLCがない場合に使用する補完基準価格（例: 直前の終値）
         """
         current = start_minute + timedelta(minutes=1)
 
@@ -113,12 +121,26 @@ class PriceHandler:
                 current += timedelta(minutes=1)
                 continue
 
+            # 補完に使用する終値を決定
+            #if self.ohlc_builder.ohlc:
+            #    last_close = self.ohlc_builder.ohlc["close"]
+            #elif base_price is not None:
+            #    last_close = base_price
+            #    print(f"[INFO][fill_missing_minutes] base_priceを使用して補完: {last_close}")
+            #elif self.latest_price is not None:
+            #    last_close = self.latest_price
+            #    print(f"[WARN][fill_missing_minutes] base_priceもOHLCもなし → latest_priceで補完: {last_close}")
+            #else:
+             #   print("[ERROR][fill_missing_minutes] 補完価格が取得できません。スキップします。")
+            #    current += timedelta(minutes=1)
+            #    continue
+
             dummy = {
                 "time": current,
-                "open": self.latest_price,
-                "high": self.latest_price,
-                "low": self.latest_price,
-                "close": self.latest_price,
+                "open": base_price,
+                "high": base_price,
+                "low": base_price,
+                "close": base_price,
                 "is_dummy": True,
                 "contract_month": "dummy"
             }
@@ -126,8 +148,6 @@ class PriceHandler:
             print(f"[FILL][fill_missing_minutes] ダミー補完: {current}")
             self.ohlc_writer.write_row(dummy)
             self.last_written_minute = current
-            self.ohlc_builder.current_minute = current
-            self.ohlc_builder.ohlc = dummy
 
             current += timedelta(minutes=1)
 

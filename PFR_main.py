@@ -15,7 +15,7 @@ from writer.tick_writer import TickWriter
 from utils.time_util import get_exchange_code, get_trade_date, is_night_session, is_closing_minute, is_opening_minute, is_day_session
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
-from utils.future_info_util import get_token, register_symbol
+from utils.future_info_util import get_token, register_symbol,get_previous_close_price
 
 
 def setup_environment():
@@ -107,9 +107,11 @@ def run_main_loop(price_handler, ws_client, end_time=None):
                         diff = int((now - last_checked_minute).total_seconds() // 60) - 1
                         if diff > 0:
                             print(f"[INFO] サーキットブレイク中の分飛び補完: {diff}分")
+                            last_close =  get_previous_close_price(datetime.now())
                             price_handler.fill_missing_minutes(
                                 start_minute=last_checked_minute,
-                                end_minute=now.time()
+                                end_minute=now.time(),
+                                base_price=last_close
                             )
                             last_checked_minute = now
                     time.sleep(1)
@@ -134,9 +136,11 @@ def run_main_loop(price_handler, ws_client, end_time=None):
                     diff = int((now - last_checked_minute).total_seconds() // 60) - 1
                     if diff > 0:
                         print(f"[INFO] 分飛び補完: {diff}分 (from {last_checked_minute} to {now})")
+                        last_close = get_previous_close_price(datetime.now())
                         price_handler.fill_missing_minutes(
                             start_minute=last_checked_minute,
-                            end_minute=now.time()
+                            end_minute=now.time(),
+                            base_price=last_close
                         )
                     last_checked_minute = now
                 prev_last_line = update_if_changed(prev_last_line)
@@ -150,9 +154,11 @@ def run_main_loop(price_handler, ws_client, end_time=None):
                     else:
                         print(f"[INFO] クロージング時刻 {now.time()} に到達 → 補完は不要")
 
+                    last_close =  get_previous_close_price(datetime.now())
                     price_handler.fill_missing_minutes(
                         start_minute=last_checked_minute,
-                        end_minute=now.time()
+                        end_minute=now.time(),
+                        base_price=last_close
                     )
                     print(f"[INFO] クロージングtickをhandle_tickに送信: {price} @ {now}")
                     price_handler.handle_tick(price or 0, now, 1)

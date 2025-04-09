@@ -299,37 +299,35 @@ def get_cb_info(symbol: str, exchange: int, api_key: str):
 
 def get_previous_close_price(now: datetime, base_dir: str = "csv") -> Optional[float]:
     """
-    指定フォルダ内で最も新しい *_ohlc.csv ファイルを見つけて、最終行の終値を返す。
+    指定フォルダ内で最も最近更新されたCSVファイルを読み込み、最終行の終値を返す。
     """
     try:
-        # ディレクトリ内のファイル一覧を取得
-        files = os.listdir(base_dir)
-
-        # *_ohlc.csv だけを抽出
-        ohlc_files = [
-            f for f in files
-            if f.endswith("_ohlc.csv")
+        # base_dir内のCSVファイル一覧を取得
+        files = [
+            os.path.join(base_dir, f)
+            for f in os.listdir(base_dir)
+            if f.endswith(".csv")
         ]
 
-        if not ohlc_files:
-            print(f"[WARN] OHLCファイルが見つかりません（ディレクトリ: {base_dir}）")
+        if not files:
+            print(f"[WARN] CSVファイルが見つかりません（ディレクトリ: {base_dir}）")
             return None
 
-        # ファイル名に日付が含まれている前提でソート（降順）
-        ohlc_files.sort(reverse=True)
+        # 更新日時でソート（新しい順）
+        files.sort(key=lambda path: os.path.getmtime(path), reverse=True)
 
-        for fname in ohlc_files:
-            path = os.path.join(base_dir, fname)
+        for path in files:
             try:
                 df = pd.read_csv(path)
                 if not df.empty:
-                    close_price = df.iloc[-1]["close"]
-                    print(f"[INFO] 最新OHLCファイルから終値を取得: {fname} → {close_price}")
+                    last_row = df.iloc[-1]
+                    close_price = last_row.get("Close") or last_row.get("close")
+                    print(f"[INFO] 最新更新ファイルから終値を取得: {os.path.basename(path)} → {close_price}")
                     return close_price
             except Exception as e:
-                print(f"[WARN] ファイル読み取り失敗: {fname} → {e}")
+                print(f"[WARN] ファイル読み取り失敗: {path} → {e}")
 
-        print("[WARN] 有効なOHLCファイルが見つかりませんでした")
+        print("[WARN] 有効なCSVファイルが見つかりませんでした")
         return None
 
     except Exception as e:

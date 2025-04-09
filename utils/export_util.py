@@ -5,6 +5,7 @@ from datetime import timedelta
 import pandas as pd
 from typing import Optional
 from datetime import datetime
+from typing import Tuple
 
 def export_connection_info(symbol_code: str, exchange_code: int, token: str, output_file: str = "connection_info.csv"):
     """
@@ -72,39 +73,45 @@ def export_latest_minutes_to_csv(base_dir: str, minutes: int = 3, output_file: s
         print(f"[エラー] 処理中に例外が発生しました: {e}")
         return prev_last_line
 
-def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line: str = "") -> tuple[str, pd.DataFrame]:
+def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line: str = "") -> Tuple[str, pd.DataFrame]:
     """
-    ディレクトリ内のCSVファイルから、最新2つを読み込み、N分間のデータを抽出して出力。
+    ディレクトリ内のCSVファイルから、更新日時が新しい2つを読み込み、
+    最新N分間のデータを抽出して返す。
     戻り値は (最終行の文字列, 最新N分のDataFrame)。
     """
     try:
-        files = [
-            f for f in os.listdir(base_dir)
-            if f.endswith("_nikkei_mini_future.csv") and f[:8].isdigit()
+        # 拡張子が.csvのファイルを取得
+        csv_files = [
+            os.path.join(base_dir, f)
+            for f in os.listdir(base_dir)
+            if f.endswith(".csv")
         ]
 
-        if len(files) < 1:
+        if len(csv_files) < 1:
             print("[警告] 対象CSVファイルが見つかりませんでした")
             return prev_last_line, pd.DataFrame()
 
-        files_sorted = sorted(files, reverse=True)
-        target_files = files_sorted[:2]
+        # 更新日時でソート（新しい順）
+        csv_files.sort(key=os.path.getmtime, reverse=True)
+
+        # 最新の2つを対象とする
+        target_files = csv_files[:2]
 
         combined_df = pd.DataFrame()
 
-        for fname in reversed(target_files):
-            path = os.path.join(base_dir, fname)
+        for path in reversed(target_files):
             try:
                 temp_df = pd.read_csv(path)
                 temp_df["Time"] = pd.to_datetime(temp_df["Time"])
                 combined_df = pd.concat([combined_df, temp_df], ignore_index=True)
             except Exception as e:
-                print(f"[警告] {fname} の読み込みに失敗: {e}")
+                print(f"[警告] {os.path.basename(path)} の読み込みに失敗: {e}")
 
         if combined_df.empty:
             print("[警告] ファイル読み込みに失敗しました")
             return prev_last_line, pd.DataFrame()
 
+        # 最新N分のデータを抽出
         latest_time = combined_df["Time"].max()
         start_time = latest_time - timedelta(minutes=minutes - 1)
         latest_df = combined_df[combined_df["Time"] >= start_time].copy()
@@ -113,7 +120,7 @@ def export_latest_minutes_to_pd(base_dir: str, minutes: int = 3, prev_last_line:
         # 日付フォーマットの変換（表示用）
         latest_df["Time"] = latest_df["Time"].dt.strftime("%Y/%m/%d %H:%M:%S")
 
-        # 最終行の取得（今回は必ず df を返す）
+        # 最終行の取得
         if not latest_df.empty:
             last_row_str = ",".join(map(str, latest_df.iloc[-1].values))
         else:

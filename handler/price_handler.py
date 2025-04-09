@@ -2,7 +2,7 @@
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
 from writer.ohlc_builder import OHLCBuilder
-from utils.time_util import is_closing_end, is_market_closed,is_pre_closing_minute,is_closing_minute
+from utils.time_util import  is_market_closed,is_closing_minute
 from datetime import datetime, timedelta, time as dtime
 from utils.symbol_resolver import get_active_term
 from utils.export_util import get_last_ohlc_time_from_csv

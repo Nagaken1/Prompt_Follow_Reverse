@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, time as dtime
-from utils.time_util import is_pre_closing_period, get_next_closing_time
+
 
 class OHLCBuilder:
     """

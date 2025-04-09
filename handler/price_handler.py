@@ -21,12 +21,12 @@ class PriceHandler:
         self.ohlc_builder = OHLCBuilder()
         self.ohlc_writer = ohlc_writer
         self.tick_writer = tick_writer
-        self.last_written_minute = None
+
         self.latest_price = None
         self.latest_timestamp = None
         self.latest_price_status = None
         self.last_written_minute = get_last_ohlc_time_from_csv("csv")
-        self.preclose_base_time = None
+
 
     def get_latest_price(self) -> Optional[float]:
         """最新の価格を返す"""
@@ -51,14 +51,6 @@ class PriceHandler:
 
         if self.tick_writer is not None:
             self.tick_writer.write_tick(price, timestamp, current_price_status)
-
-        # 次セッションの最初の価格を記録（ダミー補完に使用）
-        if (
-            self.ohlc_builder.first_price_of_next_session is None
-            and not is_closing_end(timestamp)
-            and self.ohlc_builder.closing_completed_session != self.ohlc_builder._get_session_id(timestamp)
-        ):
-            self.ohlc_builder.first_price_of_next_session = price
 
         # ===== update() を繰り返し呼んで OHLC を返すまで処理 =====
         while True:

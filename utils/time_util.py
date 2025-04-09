@@ -20,17 +20,6 @@ def get_exchange_code(now: datetime) -> int:
     t = now.time()
     return 23 if dtime(8, 43) <= t <= dtime(15, 47) else 24
 
-
-def is_closing_end(ts: datetime) -> bool:
-    """
-    クロージングセッションの終了直前の時刻かを判定する。
-    - 日中クロージング → 15:59
-    - 夜間クロージング → 5:59
-    """
-    t = ts.time()
-    return t == dtime(15, 59) or t == dtime(5, 59)
-
-
 def get_trade_date(now: datetime) -> datetime.date:
     """
     ナイトセッション起点（17:00）での取引日を返し、土日なら前営業日に補正する。
@@ -66,38 +55,6 @@ def is_opening_minute(minute: dtime) -> bool:
     # t = minute.time() ← これは不要
     t = minute  # そのまま使えばOK
     return t == dtime(8, 45) or t == dtime(17, 0)
-
-def is_pre_closing_minute(minute: dtime) -> bool:
-    """
-    プレクロージング時間（15:40 または 5:55）かを判定
-    """
-    # t = minute.time() ← これは不要
-    t = minute  # そのまま使えばOK
-    return t == dtime(15, 40) or t == dtime(5, 55)
-
-def get_next_closing_time(now: datetime) -> datetime:
-    """
-    現在時刻に基づいて、次に訪れるクロージング時刻（15:45 または 翌6:00）を返す。
-    """
-    today = now.date()
-    day_closing = datetime.combine(today, dtime(15, 45))
-    night_closing = datetime.combine(today, dtime(6, 0))
-
-    if now.time() < dtime(6, 0):
-        return night_closing
-    elif now.time() < dtime(15, 45):
-        return day_closing
-    else:
-        # 翌営業日の 6:00（夜間クロージング）
-        return night_closing + timedelta(days=1)
-
-def is_pre_closing_period(t: dtime) -> bool:
-    """
-    プレクロージングの時間帯に該当するかを判定
-    日中: 15:35〜15:44
-    夜間: 05:50〜05:59
-    """
-    return (dtime(15, 35) <= t <= dtime(15, 44)) or (dtime(5, 50) <= t <= dtime(5, 59))
 
 def is_day_session(now: datetime) -> bool:
     """

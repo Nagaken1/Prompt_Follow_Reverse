@@ -205,11 +205,11 @@ def main():
 
     setup_environment()
 
-    ohlc_writer, tick_writer, price_handler, ws_client, end_time = initialize_components(now)
+    ohlc_writer, tick_writer, price_handler, ws_client, end_time, last_checked_minute  = initialize_components(now)
     if not ws_client:
         return
 
-    run_main_loop(price_handler, ws_client, end_time)
+    run_main_loop(price_handler, ws_client, end_time,last_checked_minute )
 
 
 if __name__ == "__main__":

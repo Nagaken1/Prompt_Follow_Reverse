@@ -92,6 +92,9 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
 
             now = datetime.now().replace(second=0, microsecond=0) if timestamp is None else timestamp.replace(second=0, microsecond=0, tzinfo=None)
 
+            same_count = price_handler.get_same_timestamp_count()
+            #print(f"[DEBUG][run_main_loop] 同一timestamp継続カウント: {same_count}")
+
             real_now = datetime.now().replace(second=0, microsecond=0)
 
             # ✅ サーキットブレイク中の補完処理
@@ -122,21 +125,50 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
                 )
             prev_last_line = update_if_changed(prev_last_line)
 
-            # ✅ クロージングtick補完＋出力
-            if not closing_finalized and (
-                is_closing_minute(now.time()) or is_market_closed(real_now)
-            ):
-                # クロージングtickが来ていたらそのtickの時間を使う。なければPC時間で補完。
-                tick_time = now if is_closing_minute(now.time()) else get_closing_tick_time(real_now)
+            if same_count > 300 and status != 12:#同じタイムスタンプが続いた場合かつ、サーキットブレーカーではない
+                tick_time = now
+                print(f"[INFO] tickをhandle_tickに強制送信（same_count={same_count}）: {price} @ {tick_time}")
+                print("同じタイムスタンプが続いた場合かつ、サーキットブレーカーではない")
+                price_handler.handle_tick(price or 0, tick_time, 1 , False ,True)
+                prev_last_line = update_if_changed(prev_last_line)
+                continue
 
+            if not closing_finalized and is_closing_minute(now.time()):  # tickが15:45または6:00に来た場合
+                 # クロージングtickが来ていたらそのtimestampを使う。
+                tick_time = now
+
+                # ✅ 15:40〜15:44 の補完（tick_time を含めないように -1分）
                 last_checked_minute = handle_gap_fill(
-                    price_handler, last_checked_minute, now, is_closing=True
+                    price_handler, last_checked_minute, tick_time, is_closing=True
                 )
-                print(f"[INFO] クロージングtickをhandle_tickに送信: {price} @ {tick_time}")
-                price_handler.handle_tick(price or 0, tick_time, 1)
+
+                # ✅ 15:45 or 6:00 の足を強制的に確定させる
+                print(f"[INFO] tickをhandle_tickに強制送信（same_count={same_count}）: {price} @ {tick_time}")
+                print('tickが15:45または6:00に来た場合')
+                price_handler.handle_tick(price or 0, tick_time, 1 ,False, True)
+
                 prev_last_line = update_if_changed(prev_last_line)
                 closing_finalized = True
-            time.sleep(1)
+
+            # ✅ クロージングtick補完＋出力
+            if (
+                not closing_finalized and same_count > 300 and real_now >= get_closing_tick_time(now, real_now)  # 実時間がクロージング時刻を超えている
+            ):
+                # クロージングtickが来ていたらそのtimestampを使う。来ていなければ日付固定で補完。
+                tick_time = now if is_closing_minute(now.time()) else get_closing_tick_time(now, real_now)
+
+                # ✅ 15:40〜15:44 の補完（tick_time を含めないように -1分）
+                last_checked_minute = handle_gap_fill(
+                    price_handler, last_checked_minute, tick_time, is_closing=True
+                )
+
+                # ✅ 15:45 or 6:00 の足を強制的に確定させる
+                print(f"[INFO] tickをhandle_tickに強制送信（same_count={same_count}）: {price} @ {tick_time}")
+                print('tickが15:45または6:00に来なかった場合')
+                price_handler.handle_tick(price or 0, tick_time, 1 ,True, True)
+
+                prev_last_line = update_if_changed(prev_last_line)
+                closing_finalized = True
 
     finally:
         shutdown(price_handler, ws_client)

@@ -49,7 +49,9 @@ class DummyWebSocketClient:
                     price = float(tick["Price"])
                     timestamp = datetime.strptime(tick["Time"], "%Y-%m-%d %H:%M:%S")
                     current_price_status = float(tick["CurrentPriceStatus"])
-                    self.handler.handle_tick(price, timestamp, current_price_status)
+                    dummy = False
+                    force_finalize = False
+                    self.handler.handle_tick(price, timestamp, current_price_status , dummy , force_finalize)
 
         except Exception as e:
             print(f"[MOCK WS] 接続エラー: {e}")

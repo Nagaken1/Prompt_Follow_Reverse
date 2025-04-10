@@ -27,6 +27,9 @@ class PriceHandler:
         self.latest_price_status = None
         self.last_written_minute = get_last_ohlc_time_from_csv("csv")
 
+        self.previous_timestamp = None
+        self.same_timestamp_count = 0
+
         # ✅ 追加：前回セッションの終値を保持（補完の初期値に使用）
         self.previous_close_price = get_previous_close_price(datetime.now())
 
@@ -47,7 +50,13 @@ class PriceHandler:
         """最新の現値ステータスを返す"""
         return self.latest_price_status
 
-    def handle_tick(self, price: float, timestamp: datetime, current_price_status: int) -> None:
+    def get_same_timestamp_count(self) -> int:
+        """
+        同じtimestampのtickが何回連続して来ているかを返す。
+        """
+        return self.same_timestamp_count
+
+    def handle_tick(self, price: float, timestamp: datetime, current_price_status: int , dummy:bool ,force_finalize: bool) -> None:
 
         # 通常処理ここから
         self.latest_price = price
@@ -58,6 +67,14 @@ class PriceHandler:
 
         if self.tick_writer is not None:
             self.tick_writer.write_tick(price, timestamp, current_price_status)
+
+        #  同一timestampの連続カウント処理
+        if self.previous_timestamp == timestamp:
+            self.same_timestamp_count += 1
+        else:
+            self.same_timestamp_count = 1  # 初回を1としてカウント
+            self.previous_timestamp = timestamp
+
 
         # ===== update() を繰り返し呼んで OHLC を返すまで処理 =====
         while True:
@@ -85,19 +102,19 @@ class PriceHandler:
             self.ohlc_builder.current_minute = ohlc_time
             print(f"[WRITE] OHLC確定: {ohlc_time} 値: {ohlc}")
 
-        # ===== クロージングtick用の強制確定処理（15:45 or 6:00）=====
-        if is_closing_minute(timestamp.time()):
-            print(f"[INFO][handle_tick] クロージングtickをhandle_tickに送ります: {price} @ {timestamp}")
+        # ===== 強制確定処理（クロージングおよび同一タイムスタンプが続いた場合）=====
+        if force_finalize:
+            print(f"[INFO][handle_tick] tickをhandle_tickに送ります: {price} @ {timestamp}")
 
-            final_ohlc = self.ohlc_builder.force_finalize(timestamp)
+            final_ohlc = self.ohlc_builder.force_finalize(timestamp,force_dummy=dummy)
             if final_ohlc:
                 final_time = final_ohlc["time"].replace(second=0, microsecond=0)
                 if not self.last_written_minute or final_time > self.last_written_minute:
                     self.ohlc_writer.write_row(final_ohlc)
                     self.last_written_minute = final_time
-                    print(f"[INFO][handle_tick] クロージングOHLCを強制出力: {final_time}")
+                    print(f"[INFO][handle_tick] OHLCを強制出力: {final_time}")
                 else:
-                    print(f"[INFO][handle_tick] クロージングOHLCはすでに出力済み: {final_time}")
+                    print(f"[INFO][handle_tick] OHLCはすでに出力済み: {final_time}")
 
     def fill_missing_minutes(self, start_minute: datetime, end_minute: dtime, base_price: Optional[float] = None):
         """

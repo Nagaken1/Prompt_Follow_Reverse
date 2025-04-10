@@ -56,7 +56,7 @@ class OHLCBuilder:
     def _finalize_ohlc(self) -> dict:
         return self.ohlc
 
-    def force_finalize(self, now: datetime) -> dict:
+    def force_finalize(self, now: datetime, force_dummy=False) -> dict:
         """
         クロージングtickなどで、明示的に現在時刻のOHLCを強制構築する。
         - OHLCがまだ当該時刻まで進んでいなければダミーで生成
@@ -64,16 +64,22 @@ class OHLCBuilder:
         """
         target_minute = now.replace(second=0, microsecond=0)
 
-        if self.ohlc is None or self.ohlc["time"] < target_minute:
-            last_close = self.ohlc["close"] if self.ohlc else 0
-            return {
-                "time": target_minute,
-                "open": last_close,
-                "high": last_close,
-                "low": last_close,
-                "close": last_close,
-                "is_dummy": True,
-                "contract_month": "dummy"
-            }
+        if self.ohlc and self.ohlc["time"] == target_minute:
+            ohlc_copy = self.ohlc.copy()
+            if force_dummy:
+                ohlc_copy["is_dummy"] = True
+            return ohlc_copy
 
-        return self.ohlc.copy()
+        if self.ohlc and self.ohlc["time"] > target_minute:
+            return None
+
+        close_price = self.ohlc["close"] if self.ohlc else 0
+        return {
+            "time": target_minute,
+            "open": close_price,
+            "high": close_price,
+            "low": close_price,
+            "close": close_price,
+            "is_dummy": True,
+            "contract_month": self.ohlc["contract_month"] if self.ohlc else "dummy"
+    }

@@ -97,13 +97,17 @@ def get_session_end_time(now: datetime) -> datetime | None:
     else:
         return None
 
-def get_closing_tick_time(now: datetime) -> datetime:
+def get_closing_tick_time(reference_date: datetime, current_time: datetime) -> datetime:
     """
-    現在のリアル時間に基づいて、クロージングtick用の固定時刻を返す。
-    - 日中なら 15:45
-    - 夜間なら 6:00（翌営業日）
+    現在時刻に基づいて、正しいクロージング時刻（15:45 / 6:00）を返す。
+    - reference_date: 最後にtickが来た日時（dateを使う）
+    - current_time: PCの現在時刻やクロックタイム（判断基準として使う）
     """
-    if is_day_session(now):
-        return datetime.combine(now.date(), dtime(15, 45))
+    t = current_time.time()
+
+    if t >= dtime(15, 45):
+        return datetime.combine(reference_date.date(), dtime(15, 45))
+    elif t >= dtime(6, 0):
+        return datetime.combine(reference_date.date(), dtime(6, 0))
     else:
-        return datetime.combine(get_trade_date(now), dtime(6, 0))
+        return reference_date  # fallback

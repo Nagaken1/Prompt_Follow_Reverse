@@ -12,7 +12,7 @@ from client.dummy_websocket_client import DummyWebSocketClient
 from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
-from utils.time_util import get_exchange_code, is_closing_minute, is_opening_minute,get_initial_checked_minute,get_session_end_time
+from utils.time_util import get_exchange_code, is_closing_minute, is_opening_minute,get_initial_checked_minute,get_session_end_time,is_market_closed
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
 from utils.future_info_util import get_token, register_symbol,get_previous_close_price
@@ -92,6 +92,8 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
 
             now = datetime.now().replace(second=0, microsecond=0) if timestamp is None else timestamp.replace(second=0, microsecond=0, tzinfo=None)
 
+            real_now = datetime.now().replace(second=0, microsecond=0)
+
             # ✅ サーキットブレイク中の補完処理
             if timestamp is None and status == 12:
                 last_checked_minute = handle_gap_fill(
@@ -111,24 +113,31 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
                 break
 
             # ✅ 通常 or プレクロージング補完
-            if not is_closing_minute(now.time()):
-                if last_checked_minute is None:
-                    print(f"[INFO] 初回tick検出。補完スキップ: {now}")
-                    last_checked_minute = now
-                else:
-                    last_checked_minute = handle_gap_fill(
-                        price_handler, last_checked_minute, now
-                    )
-                prev_last_line = update_if_changed(prev_last_line)
+            if last_checked_minute is None:
+                print(f"[INFO] 初回tick検出。補完スキップ: {now}")
+                last_checked_minute = now
+            else:
+                last_checked_minute = handle_gap_fill(
+                    price_handler, last_checked_minute, now
+                )
+            prev_last_line = update_if_changed(prev_last_line)
 
             # ✅ クロージングtick補完＋出力
-            else:
-                if not closing_finalized:
+
+            if not closing_finalized:
+
+                if is_closing_minute(now.time()):
                     last_checked_minute = handle_gap_fill(
                         price_handler, last_checked_minute, now, is_closing=True
                     )
                     print(f"[INFO] クロージングtickをhandle_tickに送信: {price} @ {now}")
                     price_handler.handle_tick(price or 0, now, 1)
+                    prev_last_line = update_if_changed(prev_last_line)
+                    closing_finalized = True
+
+                elif is_market_closed(real_now):
+                    # クロージングtickが来なかった想定で、最後のtickまたはダミー価格を使ってhandle_tick
+                    price_handler.handle_tick(price or 0, real_now, 1)
                     prev_last_line = update_if_changed(prev_last_line)
                     closing_finalized = True
 

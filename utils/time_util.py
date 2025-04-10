@@ -96,3 +96,14 @@ def get_session_end_time(now: datetime) -> datetime | None:
         return datetime.combine(now.date(), dtime(15, 50))
     else:
         return None
+
+def get_closing_tick_time(now: datetime) -> datetime:
+    """
+    現在のリアル時間に基づいて、クロージングtick用の固定時刻を返す。
+    - 日中なら 15:45
+    - 夜間なら 6:00（翌営業日）
+    """
+    if is_day_session(now):
+        return datetime.combine(now.date(), dtime(15, 45))
+    else:
+        return datetime.combine(get_trade_date(now), dtime(6, 0))

@@ -36,11 +36,13 @@ class TickWriter:
             self.writer = csv.writer(self.file)
 
             if self.file.tell() == 0:
-                self.writer.writerow(["Time", "Price", "CurrentPriceStatus"])
+                self.writer.writerow(["Time","TradeTime", "Price", "CurrentPriceStatus"])
 
             self.current_date = trade_date
 
-        row = [timestamp.strftime("%Y/%m/%d %H:%M:%S"), price, current_price_status]
+        trade_time = datetime.combine(trade_date, timestamp.time())
+
+        row = [timestamp.strftime("%Y/%m/%d %H:%M:%S"),trade_time.strftime("%Y/%m/%d %H:%M:%S") , price, current_price_status]
         self.writer.writerow(row)
         self.file.flush()
 

@@ -21,7 +21,9 @@ class DualLogger:
 
         while "\n" in self.buffer:
             line, self.buffer = self.buffer.split("\n", 1)
-            timestamp = datetime.now().strftime("[%Y/%m/%d %H:%M:%S] ")
+            now = datetime.now()
+            trade_date = get_trade_date(now)
+            timestamp = f"[{now.strftime('%Y/%m/%d %H:%M:%S')} | TradeDate: {trade_date.strftime('%Y/%m/%d')}] "
             full_line = timestamp + line + "\n"
 
             self.terminal.write(full_line)
@@ -43,18 +45,19 @@ class DualLogger:
 def setup_logger():
     """
     ログフォルダを作成し、標準出力をDualLoggerに差し替える。
-    日付ベースのログファイルに出力。
+    取引日ベースのログファイルに出力。
     """
     log_dir = "log"
     os.makedirs(log_dir, exist_ok=True)
 
-    log_filename = datetime.now().strftime("%Y%m%d") + "_PFR_log.txt"
+    trade_date = get_trade_date(datetime.now())
+    log_filename = trade_date.strftime("%Y%m%d") + "_PFR_log.txt"
     log_path = os.path.join(log_dir, log_filename)
 
     sys.stdout = DualLogger(log_path)
     sys.stderr = sys.stdout
 
-    atexit.register(sys.stdout.flush) # 終了時に flush を確実におこなう
+    atexit.register(sys.stdout.flush)  # 終了時に flush を確実におこなう
 
 def log_timeline_data(**data):
     """

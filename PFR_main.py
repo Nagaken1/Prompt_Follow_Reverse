@@ -33,7 +33,9 @@ def initialize_components(now):
 
     if DUMMY_TICK_TEST_MODE:
         ws_client = DummyWebSocketClient(price_handler, uri=DUMMY_URL)
-        return ohlc_writer, tick_writer, price_handler, ws_client, None
+        end_time = None
+        last_checked_minute = get_initial_checked_minute(now)
+        return ohlc_writer, tick_writer, price_handler, ws_client, end_time, last_checked_minute
 
     token = get_token()
     if not token:

@@ -32,7 +32,7 @@ class OHLCWriter:
         self.writer = csv.writer(self.file)
 
         if os.stat(filename).st_size == 0:
-            self.writer.writerow(["Time", "Open", "High", "Low", "Close", "Dummy", "ContractMonth"])
+            self.writer.writerow(["Time","TradeTime" ,"Open", "High", "Low", "Close", "Dummy", "ContractMonth"])
 
 
     def write_row(self, ohlc: dict):
@@ -53,8 +53,12 @@ class OHLCWriter:
         if dummy_flag == "dummy":
             contract_month = "dummy"
 
+        # trade_time（取引日＋時刻）
+        trade_time = datetime.combine(trade_date, time.time())
+
         self.writer.writerow([
             time.strftime("%Y/%m/%d %H:%M:%S"),
+            trade_time.strftime("%Y/%m/%d %H:%M:%S"),
             ohlc["open"],
             ohlc["high"],
             ohlc["low"],

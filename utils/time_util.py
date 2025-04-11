@@ -83,6 +83,7 @@ def get_initial_checked_minute( now: datetime, base_dir: str = "csv") -> datetim
             print(f"[INFO] 最後に出力されたOHLC時刻から補完を開始: {last_ohlc_time}")
     else:
         print("[INFO] 出力済みOHLCが見つからなかったため、補完開始時刻は起動時刻以降")
+        last_checked_minute = now
     return last_checked_minute
 
 def get_session_end_time(now: datetime) -> datetime | None:

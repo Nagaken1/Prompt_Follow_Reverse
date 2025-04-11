@@ -21,14 +21,15 @@ def get_exchange_code(now: datetime) -> int:
     return 23 if dtime(8, 43) <= t <= dtime(15, 47) else 24
 
 def get_trade_date(now: datetime) -> datetime.date:
-    """
-    ナイトセッション起点（17:00）での取引日を返し、土日なら前営業日に補正する。
-    """
-    trade_date = (now + timedelta(days=1)).date() if now.time() >= dtime(17, 0) else now.date()
+    # ナイトセッションは17:00以降で、取引日は翌営業日
+    if now.time() >= dtime(17, 0):
+        trade_date = now.date() + timedelta(days=1)
+    else:
+        trade_date = now.date()
 
-    # 土曜（5）、日曜（6）は前営業日に補正
-    while trade_date.weekday() >= 5:
-        trade_date -= timedelta(days=1)
+    # 営業日に補正（先に進める）
+    while trade_date.weekday() >= 5:  # 土曜(5) or 日曜(6)
+        trade_date += timedelta(days=1)
 
     return trade_date
 

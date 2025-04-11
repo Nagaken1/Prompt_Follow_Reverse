@@ -12,7 +12,7 @@ from client.dummy_websocket_client import DummyWebSocketClient
 from handler.price_handler import PriceHandler
 from writer.ohlc_writer import OHLCWriter
 from writer.tick_writer import TickWriter
-from utils.time_util import get_exchange_code, is_closing_minute, is_opening_minute,get_initial_checked_minute,get_session_end_time,is_market_closed,get_closing_tick_time
+from utils.time_util import get_exchange_code, is_opening_minute,get_initial_checked_minute,get_session_end_time,get_closing_tick_time,should_trigger_closing
 from utils.symbol_resolver import get_active_term, get_symbol_code
 from utils.export_util import export_connection_info, export_latest_minutes_to_pd
 from utils.future_info_util import get_token, register_symbol,get_previous_close_price
@@ -135,7 +135,7 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
                 prev_last_line = update_if_changed(prev_last_line)
                 continue
 
-            if not closing_finalized and is_closing_minute(now.time()):  # tickが15:45または6:00に来た場合
+            if not closing_finalized and should_trigger_closing(now.time(), real_now.time()):  # tickが15:45または6:00に来た場合
                  # クロージングtickが来ていたらそのtimestampを使う。
                 tick_time = now
 
@@ -157,7 +157,7 @@ def run_main_loop(price_handler, ws_client, end_time=None, last_checked_minute=N
                 not closing_finalized and same_count > 300 and real_now >= get_closing_tick_time(now, real_now)  # 実時間がクロージング時刻を超えている
             ):
                 # クロージングtickが来ていたらそのtimestampを使う。来ていなければ日付固定で補完。
-                tick_time = now if is_closing_minute(now.time()) else get_closing_tick_time(now, real_now)
+                tick_time = now if should_trigger_closing(now.time(), real_now.time()) else get_closing_tick_time(now, real_now)
 
                 # ✅ 15:40〜15:44 の補完（tick_time を含めないように -1分）
                 last_checked_minute = handle_gap_fill(

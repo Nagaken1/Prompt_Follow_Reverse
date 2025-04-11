@@ -1,5 +1,5 @@
 from datetime import datetime, time as dtime, timedelta
-
+from config.settings import DUMMY_TICK_TEST_MODE
 
 def is_market_closed(now: datetime) -> bool:
     """
@@ -113,3 +113,17 @@ def get_closing_tick_time(reference_date: datetime, current_time: datetime) -> d
         return datetime.combine(reference_date.date(), dtime(6, 0))
     else:
         return reference_date  # fallback
+
+def should_trigger_closing(tick_time: dtime, real_now_time: dtime) -> bool:
+    """
+    クロージング処理（15:45 or 6:00）を実行すべきかどうか判定。
+    - 通常モード：リアル時刻がクロージング時刻以降である必要がある
+    - DUMMY_TICK_TEST_MODE=True のときはリアル時刻ガードを無効化（即実行OK）
+    """
+    if DUMMY_TICK_TEST_MODE:
+        return tick_time in (dtime(15, 45), dtime(6, 0))
+
+    return (
+        (tick_time == dtime(15, 45) and real_now_time >= dtime(15, 45)) or
+        (tick_time == dtime(6, 0) and real_now_time >= dtime(6, 0))
+    )
